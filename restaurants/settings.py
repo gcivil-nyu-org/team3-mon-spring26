@@ -63,7 +63,7 @@ INSTALLED_APPS = [
     'two_factor',
     'corsheaders',
     'storages',
-    'nomz',
+    'nomz.apps.NomzConfig',
 ]
 
 MIDDLEWARE = [

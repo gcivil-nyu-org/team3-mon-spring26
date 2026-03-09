@@ -1,13 +1,19 @@
-from django.shortcuts import render, redirect, get_object_or_404
+from django.http import HttpResponseForbidden
+from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Q
-from django.shortcuts import render, redirect
 from django.views.decorators.http import require_http_methods, require_POST
-from .forms import UserRegisterForm, UserLoginForm
-from .models import Restaurant
-from django.db.models import Q
+from .forms import (
+    UserRegisterForm,
+    UserLoginForm,
+    RestaurantProfileForm,
+    RestaurantAvailabilityForm,
+    RestaurantActivationForm,
+    RestaurantPhotoForm,
+)
+from .models import Restaurant, RestaurantPhoto
 
 
 def landing_page(request):

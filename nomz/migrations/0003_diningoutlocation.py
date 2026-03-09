@@ -7,7 +7,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('nomz', '0002_add_nyc_ingestion_models'),
+        ('nomz', '0002_restaurant_alter_userprofile_id'),
     ]
 
     operations = [
