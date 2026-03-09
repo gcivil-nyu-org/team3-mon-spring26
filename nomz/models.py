@@ -5,7 +5,8 @@ from django.db import models
 
 
 class UserProfile(models.Model):
-    # The available roles
+    id = models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')
+
     ROLE_CHOICES = [
         ('diner', 'Diner'),
         ('restaurant', 'Restaurant'),
@@ -17,18 +18,8 @@ class UserProfile(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.role}"
-    
-class Restaurant(models.Model):
-    name = models.CharField(max_length=200)
-    neighborhood = models.CharField(max_length=100)
-    description = models.TextField()
-    cuisine = models.CharField(max_length=100)
-    # We use a simple CharField for neighborhood to keep it easy for now
-    
-    def __str__(self):
-        return self.name
-"""from django.contrib.gis.db import models
-    
+
+
 class Restaurant(models.Model):
     """
     Restaurant profile model for restaurant owners to manage their business information.
@@ -57,21 +48,31 @@ class Restaurant(models.Model):
         ('$$$$', 'Fine Dining ($$$$)'),
     ]
 
-    # Owner and basic info
-    owner = models.OneToOneField(User, on_delete=models.CASCADE, related_name='restaurant_profile')
+    LOCATION_TYPE_CHOICES = [
+        ('indoor', 'Indoor'),
+        ('outdoor', 'Outdoor'),
+        ('sidewalk', 'Sidewalk'),
+        ('mixed', 'Mixed'),
+        ('unknown', 'Unknown'),
+    ]
+
+    # Owner and basic owner-editable info
+    owner = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='restaurant_profile',
+        null=True,
+        blank=True,
+    )
     name = models.CharField(max_length=255, unique=True)
     description = models.TextField(blank=True, null=True, help_text='Describe your restaurant, cuisine style, and ambiance')
-    
-    # Location and contact
     address = models.CharField(max_length=500, blank=True, null=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
     website = models.URLField(blank=True, null=True)
-    email = models.EmailField(blank=True, null=True)
-    
-    # Restaurant details
+    email = models.EmailField(max_length=254, blank=True, null=True)
     cuisine_type = models.CharField(max_length=50, choices=CUISINE_CHOICES, default='other')
     price_range = models.CharField(max_length=10, choices=PRICE_CHOICES, default='$$')
-    
+
     # Operating hours
     days_of_week = [
         ('MON', 'Monday'),
@@ -82,38 +83,63 @@ class Restaurant(models.Model):
         ('SAT', 'Saturday'),
         ('SUN', 'Sunday'),
     ]
-    
+
     # Hours stored as JSONField for flexibility (optional: can use TimeField pairs)
     hours_open = models.TimeField(default='09:00', help_text='Opening time')
     hours_close = models.TimeField(default='21:00', help_text='Closing time')
-    
+
     # Status and availability
     is_active = models.BooleanField(default=True, help_text='Profile is visible to customers')
     is_temporarily_unavailable = models.BooleanField(default=False, help_text='Temporarily mark as unavailable')
     unavailable_reason = models.CharField(max_length=500, blank=True, null=True)
     unavailable_until = models.DateTimeField(blank=True, null=True)
-    
-    # Timestamps
+
+    # Legacy compatibility fields expected by existing views/admin/forms
+    neighborhood = models.CharField(max_length=100, blank=True, default='')
+    cuisine = models.CharField(max_length=100, blank=True, default='')
+
+    # Ingestion-friendly normalized profile fields
+    display_name = models.CharField(max_length=255, blank=True, default='')
+    name_normalized = models.CharField(max_length=255, db_index=True, blank=True, default='')
+    building = models.CharField(max_length=64, blank=True, null=True)
+    street = models.CharField(max_length=255, blank=True, null=True)
+    borough = models.CharField(max_length=80, blank=True, null=True)
+    zip_code = models.CharField(max_length=10, db_index=True, blank=True, null=True)
+    cuisine_tags = models.JSONField(default=list, blank=True)
+
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=10, decimal_places=6, null=True, blank=True)
+
+    composite_score = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    grade_latest = models.CharField(max_length=16, blank=True, null=True)
+    grade_score_latest = models.IntegerField(blank=True, null=True)
+    last_inspection_date = models.DateField(blank=True, null=True)
+    composite_score_calculated_at = models.DateTimeField(blank=True, null=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
-    # Optional: Coordinates for map (if using GeoDjango)
-    # location = models.PointField(srid=4326, blank=True, null=True)
-    
+
     class Meta:
-        ordering = ['name']
-    
+        indexes = [
+            models.Index(fields=["name_normalized", "zip_code"]),
+            models.Index(fields=["borough", "zip_code"]),
+            models.Index(fields=["is_active"]),
+            models.Index(fields=["latitude", "longitude"]),
+        ]
+        ordering = ["name"]
+
     def __str__(self):
         return self.name
-    
+
     def is_open_now(self):
         """Check if restaurant is currently open"""
         if not self.is_active or self.is_temporarily_unavailable:
             return False
-        
+        if not self.hours_open or not self.hours_close:
+            return False
         current_time = timezone.now().time()
         return self.hours_open <= current_time <= self.hours_close
-    
+
     def can_be_managed_by(self, user):
         """Check if a user can manage this restaurant"""
         return self.owner == user
@@ -128,64 +154,41 @@ class RestaurantPhoto(models.Model):
     caption = models.CharField(max_length=255, blank=True, null=True)
     is_primary = models.BooleanField(default=False, help_text='Set as main photo for the restaurant')
     uploaded_at = models.DateTimeField(auto_now_add=True)
-    
+
     class Meta:
         ordering = ['-is_primary', '-uploaded_at']
-    
+
     def __str__(self):
         return f"{self.restaurant.name} - {self.caption or 'Photo'}"
-    
+
     def save(self, *args, **kwargs):
         """Ensure only one primary photo"""
         if self.is_primary:
             # Remove primary status from other photos
             RestaurantPhoto.objects.filter(restaurant=self.restaurant, is_primary=True).update(is_primary=False)
         super().save(*args, **kwargs)
-    name = models.CharField(max_length=255)
-    display_name = models.CharField(max_length=255, blank=True)
-    name_normalized = models.CharField(max_length=255, db_index=True)
-    building = models.CharField(max_length=64, blank=True, null=True)
-    street = models.CharField(max_length=255, blank=True, null=True)
-    borough = models.CharField(max_length=80, blank=True, null=True)
-    zip_code = models.CharField(max_length=10, db_index=True, blank=True, null=True)
-    phone = models.CharField(max_length=30, blank=True, null=True)
-    website = models.URLField(max_length=500, blank=True, null=True)
-    cuisine_tags = models.JSONField(default=list, blank=True)
 
-    latitude = models.DecimalField(
-        max_digits=9,
-        decimal_places=6,
-        null=True,
-        blank=True,
-    )
-    longitude = models.DecimalField(
-        max_digits=10,
-        decimal_places=6,
-        null=True,
-        blank=True,
-    )
 
-    composite_score = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
-    grade_latest = models.CharField(max_length=16, blank=True, null=True)
-    grade_score_latest = models.IntegerField(blank=True, null=True)
-    last_inspection_date = models.DateField(blank=True, null=True)
-    composite_score_calculated_at = models.DateTimeField(blank=True, null=True)
+class LoginLog(models.Model):
+    """
+    Tracks authentication events for simple login analytics and anti-abuse checks.
+    """
+    STATUS_CHOICES = [
+        ("Success", "Success"),
+        ("Failure", "Failure"),
+    ]
 
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        indexes = [
-            models.Index(fields=["name_normalized", "zip_code"]),
-            models.Index(fields=["borough", "zip_code"]),
-            models.Index(fields=["is_active"]),
-            models.Index(fields=["latitude", "longitude"]),
-        ]
-        ordering = ["name"]
+    username = models.CharField(max_length=150, help_text="Attempted username")
+    ip_address = models.GenericIPAddressField(blank=True, null=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    user_agent = models.TextField(blank=True, null=True)
+    is_suspicious = models.BooleanField(default=False)
+    user = models.ForeignKey(User, blank=True, null=True, on_delete=models.CASCADE)
 
     def __str__(self):
-        return f"{self.name} ({self.zip_code})"
+        target = self.user.username if self.user_id else self.username
+        return f"{target} - {self.status}"
 
 
 class RestaurantSourceRecord(models.Model):
@@ -196,7 +199,7 @@ class RestaurantSourceRecord(models.Model):
     SOURCE_CHOICES = [
         (SOURCE_EATERIES, "Directory of Eateries"),
         (SOURCE_DINING_OUT, "Dining Out NYC Locations"),
-        (SOURCE_DOHMH, "DOHMH Inspection Results"),
+        (SOURCE_DOHMH, "DOHMH New York City Restaurant Inspection Results"),
     ]
 
     restaurant = models.ForeignKey(
@@ -217,8 +220,8 @@ class RestaurantSourceRecord(models.Model):
     class Meta:
         unique_together = [["source", "external_id"]]
         indexes = [
-            models.Index(fields=["source", "external_id"]),
-            models.Index(fields=["restaurant", "source"]),
+            models.Index(fields=["source", "external_id"], name="nomz_source_ext_1"),
+            models.Index(fields=["restaurant", "source"], name="nomz_source_rest_2"),
         ]
 
     def __str__(self):
@@ -293,8 +296,8 @@ class InspectionRecord(models.Model):
     class Meta:
         unique_together = [["restaurant", "inspection_key"]]
         indexes = [
-            models.Index(fields=["restaurant", "inspection_date"]),
-            models.Index(fields=["grade"]),
+            models.Index(fields=["restaurant", "inspection_date"], name="nomz_insp_rest_1"),
+            models.Index(fields=["grade"], name="nomz_insp_grade_1"),
         ]
         ordering = ["-inspection_date"]
 
