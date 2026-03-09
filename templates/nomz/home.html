@@ -23,13 +23,16 @@
 <section class="py-5">
     <div class="row g-4">
         <div class="col-md-4">
-            <div class="card">
-                <div class="card-body text-center p-4">
-                    <div style="font-size: 3rem; color: var(--primary-color); margin-bottom: 1rem;">🔍</div>
-                    <h5 class="card-title">Discover</h5>
-                    <p class="card-text">Find amazing restaurants based on your preferences and dietary needs.</p>
+            <a href="{% url 'restaurant_search' %}" class="text-decoration-none text-dark">
+                <div class="card h-100 shadow-sm border-0" style="cursor: pointer; transition: transform 0.2s;">
+                    <div class="card-body text-center p-4">
+                        <div style="font-size: 3rem; color: var(--primary-color); margin-bottom: 1rem;">🔍</div>
+                        <h5 class="card-title">Discover</h5>
+                        <p class="card-text">Find amazing restaurants based on your preferences and dietary needs.</p>
+                        <span class="btn btn-outline-primary btn-sm mt-2">Explore Now</span>
+                    </div>
                 </div>
-            </div>
+            </a>
         </div>
         <div class="col-md-4">
             <div class="card">

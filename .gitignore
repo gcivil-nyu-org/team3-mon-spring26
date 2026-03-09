@@ -213,3 +213,4 @@ __marimo__/
 
 # AWS credentials helper (contains secrets)
 aws-config.ps1
+.DS_Store

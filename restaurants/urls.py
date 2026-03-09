@@ -16,8 +16,13 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from two_factor.urls import urlpatterns as tf_urls
+
+from django.views.generic import RedirectView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('login/', RedirectView.as_view(pattern_name='two_factor:login', permanent=False), name='login'),
+    path('', include(tf_urls)),
     path('', include('nomz.urls')),
 ]

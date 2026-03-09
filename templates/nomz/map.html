@@ -1,0 +1,635 @@
+{% extends 'nomz/base.html' %}
+
+{% block title %}Restaurant Map - Nomz{% endblock %}
+
+{% block extra_css %}
+<link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+>
+<style>
+    .map-controls-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+    }
+
+    .map-frame {
+        height: clamp(440px, 68vh, 700px);
+        border-radius: 1rem;
+        overflow: hidden;
+    }
+
+    .map-layout {
+        min-height: 500px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    #restaurant-map {
+        height: 100%;
+        min-height: 500px;
+        width: 100%;
+        background: #eef2f7;
+    }
+
+    .map-sidebar {
+        background: #ffffff;
+        border-left: 1px solid #e2e8f0;
+        max-height: 68vh;
+        overflow: auto;
+        padding: 1rem;
+    }
+
+    .score-dot {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border-radius: 999px;
+        color: #fff;
+        font-size: 0.78rem;
+        font-weight: 700;
+        border: 2px solid rgba(255, 255, 255, 0.7);
+    }
+
+    .leaflet-popup-content {
+        margin: 0.75rem 0.85rem;
+        line-height: 1.45;
+        color: #1f2937;
+    }
+
+    .restaurant-item {
+        border-bottom: 1px solid #edf2f7;
+        padding: 0.85rem 0;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+
+    .restaurant-item:hover {
+        background: #f8fafc;
+    }
+
+    .restaurant-item.active {
+        background: #f1f5f9;
+    }
+
+    .restaurant-item:focus-visible {
+        outline: 2px solid rgba(14, 165, 233, 0.25);
+        outline-offset: -2px;
+    }
+
+    .legend-bubble {
+        width: 14px;
+        height: 14px;
+        border-radius: 999px;
+        display: inline-block;
+        margin-right: 0.45rem;
+    }
+
+    .map-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: center;
+        color: #334155;
+    }
+
+    .score-pill {
+        border-radius: 999px;
+        padding: 0.2rem 0.55rem;
+        font-size: 0.82rem;
+    }
+
+    .score-pill-high { background: rgba(46, 204, 113, 0.14); color: #0f766e; }
+    .score-pill-mid { background: rgba(243, 156, 18, 0.18); color: #7c2d12; }
+    .score-pill-low { background: rgba(231, 76, 60, 0.15); color: #991b1b; }
+    .score-pill-none { background: #f1f5f9; color: #64748b; }
+
+    .map-footer {
+        border-top: 1px solid #e2e8f0;
+        margin-top: 0.7rem;
+        padding-top: 0.7rem;
+    }
+
+    @media (max-width: 1199px) {
+        .map-frame,
+        .map-sidebar {
+            max-height: 500px;
+        }
+    }
+
+    @media (max-width: 768px) {
+        #restaurant-map,
+        .map-frame {
+            min-height: 470px;
+        }
+
+        .map-sidebar {
+            border-left: 0;
+            border-top: 1px solid #e2e8f0;
+            max-height: 330px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-end justify-content-between flex-wrap gap-3 mb-4">
+    <div>
+        <p class="text-muted small mb-1">Explore Restaurants</p>
+        <h2 class="fw-bold">NYC Restaurant Map</h2>
+        <p class="text-muted mb-0">
+            Showing {{ restaurant_count }} restaurants with inspection + location data.
+        </p>
+    </div>
+    <a href="{% url 'dashboard' %}" class="btn btn-secondary">Go to Dashboard</a>
+</div>
+
+<div class="card map-controls-card shadow-sm mb-3">
+    <div class="card-body">
+        <form id="map-filter-form" class="row g-2">
+            <div class="col-md-4">
+                <label for="search" class="form-label">Search</label>
+                <input
+                    id="search"
+                    name="search"
+                    class="form-control"
+                    type="search"
+                    placeholder="Name, street, or ZIP"
+                    value="{{ search }}"
+                >
+            </div>
+            <div class="col-md-3">
+                <label for="borough" class="form-label">Borough</label>
+                <select id="borough" name="borough" class="form-select">
+                    <option value="">All Boroughs</option>
+                    {% for item in boroughs %}
+                    <option value="{{ item }}" {% if item == borough %}selected{% endif %}>
+                        {{ item }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="cuisine" class="form-label">Cuisine</label>
+                <select id="cuisine" name="cuisine" class="form-select">
+                    <option value="">All cuisines</option>
+                    {% for item in cuisines %}
+                    <option value="{{ item }}" {% if item == cuisine %}selected{% endif %}>
+                        {{ item }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="min_score" class="form-label">Min Score</label>
+                <input
+                    id="min_score"
+                    name="min_score"
+                    class="form-control"
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="1"
+                    placeholder="0"
+                    value="{{ min_score }}"
+                >
+            </div>
+            <div class="col-md-2">
+                <label for="max_score" class="form-label">Max Score</label>
+                <input
+                    id="max_score"
+                    name="max_score"
+                    class="form-control"
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="1"
+                    placeholder="100"
+                    value="{{ max_score }}"
+                >
+            </div>
+            <div class="col-md-2">
+                <label for="sort_by" class="form-label">Sort by</label>
+                <select id="sort_by" name="sort_by" class="form-select">
+                    <option value="score_desc" {% if sort_by == 'score_desc' %}selected{% endif %}>Score: High to Low</option>
+                    <option value="score_asc" {% if sort_by == 'score_asc' %}selected{% endif %}>Score: Low to High</option>
+                    <option value="name_asc" {% if sort_by == 'name_asc' %}selected{% endif %}>Name: A to Z</option>
+                    <option value="name_desc" {% if sort_by == 'name_desc' %}selected{% endif %}>Name: Z to A</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="in_viewport" class="form-label">Map Scope</label>
+                <div class="form-check pt-2">
+                    <input
+                        type="checkbox"
+                        id="in_viewport"
+                        name="in_viewport"
+                        class="form-check-input"
+                        value="1"
+                        checked
+                    >
+                    <label for="in_viewport" class="form-check-label small">
+                        Only visible map area
+                    </label>
+                </div>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <button type="submit" id="apply-filters" class="btn btn-primary w-100">Apply filters</button>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <button type="button" id="reset-map-filters" class="btn btn-outline-secondary w-100">
+                    Reset
+                </button>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <button type="button" id="locate-me" class="btn btn-outline-primary w-100">
+                    Near me
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="row g-0 map-layout">
+    <div class="col-12">
+        <div class="card map-frame shadow-sm">
+            <div class="row g-0 h-100">
+                <div class="col-12 col-xl-8">
+                    <div id="restaurant-map"></div>
+                </div>
+                <div class="col-12 col-xl-4">
+                    <aside class="map-sidebar">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0">Nearby restaurants</h6>
+                            <span id="result-count" class="text-muted small">0 results</span>
+                        </div>
+                        <p class="small text-muted mb-2">
+                            Click a row or marker to view details.
+                        </p>
+                        <div class="map-legend mb-3">
+                            <span><span class="legend-bubble" style="background:#27ae60;"></span>80+</span>
+                            <span><span class="legend-bubble" style="background:#f39c12;"></span>60-79</span>
+                            <span><span class="legend-bubble" style="background:#e74c3c;"></span>&lt;60</span>
+                            <span><span class="legend-bubble" style="background:#94a3b8;"></span>no score</span>
+                        </div>
+                        <div id="restaurant-list" class="mt-2"></div>
+                        <p id="list-empty-state" class="small text-muted d-none mb-0">
+                            No restaurants match your current filters.
+                        </p>
+                        <div class="map-footer">
+                            <small id="map-status" class="text-muted">Ready</small>
+                        </div>
+                    </aside>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+></script>
+<script>
+    const map = L.map("restaurant-map").setView([40.7128, -74.0060], 11);
+    const tiles = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "&copy; OpenStreetMap contributors",
+        maxZoom: 19,
+    });
+    tiles.addTo(map);
+
+    const defaultCenter = [40.7128, -74.0060];
+    const markerLayer = L.layerGroup().addTo(map);
+    const markerRefs = new Map();
+    const listItemRefs = new Map();
+
+    const resultCountEl = document.getElementById("result-count");
+    const listEl = document.getElementById("restaurant-list");
+    const filterForm = document.getElementById("map-filter-form");
+    const resetButton = document.getElementById("reset-map-filters");
+    const applyButton = document.getElementById("apply-filters");
+    const locateButton = document.getElementById("locate-me");
+    const emptyStateEl = document.getElementById("list-empty-state");
+    const statusEl = document.getElementById("map-status");
+    const inViewportEl = document.getElementById("in_viewport");
+    const maxZoomForFit = 15;
+    let activeRestaurantId = null;
+    let boundsLoadTimer = null;
+
+    function scoreColor(score) {
+        if (score === null || Number.isNaN(score)) {
+            return "#94a3b8";
+        }
+        if (score >= 80) {
+            return "#27ae60";
+        }
+        if (score >= 60) {
+            return "#f39c12";
+        }
+        return "#e74c3c";
+    }
+
+    function scoreClass(score) {
+        if (score === null || Number.isNaN(score)) {
+            return "score-pill-none";
+        }
+        if (score >= 80) {
+            return "score-pill-high";
+        }
+        if (score >= 60) {
+            return "score-pill-mid";
+        }
+        return "score-pill-low";
+    }
+
+    function scoreLabel(score) {
+        if (score === null || Number.isNaN(score)) {
+            return "No score";
+        }
+        return `${Math.round(score)} / 100`;
+    }
+
+    function scoreBadge(score) {
+        if (score === null || Number.isNaN(score)) {
+            return "?";
+        }
+        return `${Math.round(score)}`;
+    }
+
+    function markerIcon(score) {
+        return L.divIcon({
+            className: "map-score-marker",
+            html: `<div class="score-dot" style="background:${scoreColor(score)}">${scoreBadge(score)}</div>`,
+            iconSize: [36, 36],
+            iconAnchor: [18, 18],
+        });
+    }
+
+    function buildPopupHtml(record) {
+        const gradeLine = record.grade ? `<strong>Grade:</strong> ${record.grade}<br>` : "";
+        const phoneLine = record.phone ? `<strong>Phone:</strong> ${record.phone}<br>` : "";
+        const inspectLine = record.inspected_on ? `<strong>Last Inspected:</strong> ${record.inspected_on}<br>` : "";
+        const cuisineLine = (record.cuisine_tags || []).length
+            ? `<strong>Cuisine:</strong> ${record.cuisine_tags.join(", ")}<br>`
+            : "";
+
+        return `
+            <strong>${escapeHtml(record.name)}</strong><br>
+            ${escapeHtml(record.address)}<br>
+            ${gradeLine}
+            ${phoneLine}
+            ${cuisineLine}
+            <strong>Composite:</strong> ${record.composite_score_label}<br>
+            ${inspectLine}
+        `;
+    }
+
+    function escapeHtml(value) {
+        const div = document.createElement("div");
+        div.textContent = value || "";
+        return div.innerHTML;
+    }
+
+    function setActiveRestaurant(restaurantId, shouldScroll = false) {
+        const prev = listItemRefs.get(String(activeRestaurantId));
+        if (prev) {
+            prev.classList.remove("active");
+        }
+        const next = listItemRefs.get(String(restaurantId));
+        if (next) {
+            next.classList.add("active");
+            if (shouldScroll) {
+                next.scrollIntoView({behavior: "smooth", block: "nearest"});
+            }
+        }
+        activeRestaurantId = String(restaurantId);
+    }
+
+    function clearActiveRestaurant() {
+        const prev = listItemRefs.get(String(activeRestaurantId));
+        if (prev) {
+            prev.classList.remove("active");
+        }
+        activeRestaurantId = null;
+    }
+
+    function buildListItem(record) {
+        const cuisines = (record.cuisine_tags || []).slice(0, 3).join(", ");
+        const score = record.composite_score;
+        const restaurantId = String(record.id);
+        const item = document.createElement("div");
+        const cuisineText = cuisines ? ` · ${escapeHtml(cuisines)}` : "";
+
+        item.className = "restaurant-item";
+        item.setAttribute("data-id", restaurantId);
+        item.setAttribute("role", "button");
+        item.setAttribute("tabindex", "0");
+        item.innerHTML = `
+            <div class="d-flex justify-content-between">
+                <div>
+                    <h6 class="mb-1">${escapeHtml(record.name)}</h6>
+                    <small class="text-muted">${escapeHtml(record.address)}</small>
+                </div>
+                <span class="score-pill ${scoreClass(score)}">
+                    ${scoreLabel(score)}
+                </span>
+            </div>
+            <div class="small text-muted mt-1">
+                ${record.borough ? escapeHtml(record.borough) : ""}
+                ${cuisineText}
+            </div>
+        `;
+
+        listItemRefs.set(restaurantId, item);
+
+        item.addEventListener("click", () => {
+            const marker = markerRefs.get(record.id);
+            if (!marker) {
+                return;
+            }
+            setActiveRestaurant(restaurantId, true);
+            map.flyTo(marker.getLatLng(), Math.max(map.getZoom(), 15), {
+                duration: 0.6,
+            });
+            marker.openPopup();
+        });
+
+        item.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                item.click();
+            }
+        });
+
+        return item;
+    }
+
+    function applyViewportFilters(params) {
+        if (!inViewportEl.checked) {
+            return;
+        }
+        const bounds = map.getBounds();
+        params.set("sw_lat", bounds.getSouthWest().lat.toString());
+        params.set("sw_lng", bounds.getSouthWest().lng.toString());
+        params.set("ne_lat", bounds.getNorthEast().lat.toString());
+        params.set("ne_lng", bounds.getNorthEast().lng.toString());
+    }
+
+    function setLoadingState(message) {
+        statusEl.textContent = message;
+    }
+
+    function setFormEnabled(enabled) {
+        applyButton.disabled = !enabled;
+        resetButton.disabled = !enabled;
+        locateButton.disabled = !enabled;
+        if (enabled) {
+            applyButton.textContent = "Apply filters";
+            setLoadingState("Ready");
+        } else {
+            applyButton.textContent = "Loading...";
+            setLoadingState("Loading...");
+        }
+    }
+
+    async function loadRestaurants() {
+        markerLayer.clearLayers();
+        markerRefs.clear();
+        listEl.innerHTML = "";
+        listItemRefs.clear();
+        clearActiveRestaurant();
+        resultCountEl.textContent = "0 results";
+        emptyStateEl.classList.add("d-none");
+        setFormEnabled(false);
+
+        const formValues = new FormData(filterForm);
+        const params = new URLSearchParams(formValues);
+        params.delete("in_viewport");
+        params.set("limit", "600");
+        applyViewportFilters(params);
+
+        const url = "{% url 'api_restaurants_map' %}?" + params.toString();
+        const response = await fetch(url);
+        if (!response.ok) {
+            listEl.innerHTML = '<p class="text-danger mb-0">Could not load map data.</p>';
+            setLoadingState("Failed to load data.");
+            setFormEnabled(true);
+            return;
+        }
+
+        const payload = await response.json();
+        const restaurants = payload.results || [];
+
+        const bounds = [];
+        const newList = document.createDocumentFragment();
+
+        restaurants.forEach((restaurant) => {
+            const marker = L.marker([restaurant.latitude, restaurant.longitude], {
+                icon: markerIcon(restaurant.composite_score),
+            }).bindPopup(buildPopupHtml(restaurant), {
+                maxWidth: 260,
+            });
+
+            marker.on("mouseover", () => {
+                marker.openPopup();
+                setActiveRestaurant(String(restaurant.id), false);
+            });
+            marker.on("mouseout", () => {
+                if (String(activeRestaurantId) !== String(restaurant.id)) {
+                    clearActiveRestaurant();
+                }
+            });
+            marker.on("click", () => {
+                setActiveRestaurant(String(restaurant.id), false);
+            });
+            marker.addTo(markerLayer);
+            markerRefs.set(restaurant.id, marker);
+            bounds.push([restaurant.latitude, restaurant.longitude]);
+            newList.appendChild(buildListItem(restaurant));
+        });
+
+        listEl.appendChild(newList);
+        resultCountEl.textContent = `${restaurants.length} results`;
+
+        if (!restaurants.length) {
+            emptyStateEl.classList.remove("d-none");
+        }
+
+        if (bounds.length && !inViewportEl.checked) {
+            map.fitBounds(bounds, {padding: [24, 24], maxZoom: maxZoomForFit});
+        } else if (!bounds.length && !inViewportEl.checked) {
+            map.setView(defaultCenter, 11);
+        }
+
+        setFormEnabled(true);
+        setLoadingState(`${restaurants.length} restaurants loaded.`);
+    }
+
+    filterForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        loadRestaurants();
+    });
+
+    resetButton.addEventListener("click", () => {
+        filterForm.reset();
+        if (inViewportEl) {
+            inViewportEl.checked = true;
+        }
+        loadRestaurants();
+    });
+
+    inViewportEl.addEventListener("change", () => {
+        if (!inViewportEl.checked) {
+            loadRestaurants();
+            return;
+        }
+        loadRestaurants();
+    });
+
+    map.on("moveend", () => {
+        if (!inViewportEl.checked) {
+            return;
+        }
+        if (boundsLoadTimer) {
+            clearTimeout(boundsLoadTimer);
+        }
+        boundsLoadTimer = setTimeout(() => {
+            loadRestaurants();
+        }, 250);
+    });
+
+    locateButton.addEventListener("click", () => {
+        if (!navigator.geolocation) {
+            setLoadingState("Geolocation not supported.");
+            return;
+        }
+
+        setLoadingState("Locating...");
+        locateButton.disabled = true;
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const latitude = position.coords.latitude;
+                const longitude = position.coords.longitude;
+                map.flyTo([latitude, longitude], 14);
+                locateButton.disabled = false;
+                loadRestaurants();
+            },
+            () => {
+                setLoadingState("Could not access location.");
+                locateButton.disabled = false;
+            },
+            {
+                enableHighAccuracy: true,
+                maximumAge: 30000,
+                timeout: 12000,
+            }
+        );
+    });
+
+    loadRestaurants();
+</script>
+{% endblock %}
+
