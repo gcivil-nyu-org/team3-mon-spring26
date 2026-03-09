@@ -1,3 +1,4 @@
+from django.http import JsonResponse
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
@@ -28,6 +29,15 @@ def home(request):
         'title': 'Home',
     }
     return render(request, 'nomz/home.html', context)
+
+
+def health_check(request):
+    """
+    Lightweight health endpoint for ELB/EB health checks.
+    Must return HTTP 200 quickly and without auth redirects.
+    Compatible with develop's HealthCheckPath: /health/
+    """
+    return JsonResponse({"status": "ok"}, status=200)
 
 
 @require_http_methods(["GET", "POST"])
