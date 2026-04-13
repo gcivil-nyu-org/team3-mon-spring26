@@ -1,7 +1,7 @@
 # Nomz — NYC Restaurant Discovery Platform
 
 [![Build Status](https://app.travis-ci.com/gcivil-nyu-org/team3-mon-spring26.svg?branch=develop)](https://app.travis-ci.com/gcivil-nyu-org/team3-mon-spring26)
-[![Coverage Status](https://coveralls.io/repos/github/gcivil-nyu-org/team3-mon-spring26/badge.svg?branch=develop)](https://coveralls.io/github/gcivil-nyu-org/team3-mon-spring26?branch=develop)
+[![Coverage Status](https://coveralls.io/repos/github/gcivil-nyu-org/team3-mon-spring26/badge.svg?branch=darsh)](https://coveralls.io/github/gcivil-nyu-org/team3-mon-spring26?branch=darsh)
 
 Nomz is a full-stack web application for discovering, reviewing, and managing NYC restaurants. It combines real-time NYC Open Data ingestion, a multi-factor composite scoring system, personalized recommendations, and social features like friend chat and shared restaurant lists.
 
