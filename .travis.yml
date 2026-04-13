@@ -18,7 +18,7 @@ install:
   - pip install -r requirements.txt
   - pip install coverage pytest pytest-django pytest-cov
   - pip install coveralls
-  - pip install black==24.10.0
+  - pip install black==26.3.1 flake8==7.3.0
 
 # Environment variables for testing
 env:
@@ -53,6 +53,8 @@ before_deploy:
   - nvm install 20
   - nvm use 20
   - cd frontend && npm install && npm run build && cd ..
+  - python manage.py collectstatic --noinput
+  - test -f frontend/dist/index.html
 
 # Deploy to AWS Elastic Beanstalk on production branch
 deploy:
@@ -66,6 +68,7 @@ deploy:
   bucket_path: deployments
   on:
     branch: production
+  cleanup: false
   skip_cleanup: true
 
 # Branches to build

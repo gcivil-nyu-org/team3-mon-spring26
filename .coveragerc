@@ -1,33 +1,22 @@
-# Configuration file for coverage.py
 [run]
-source = .
+source = nomz
 omit =
-    */tests.py
-    */test_*.py
-    */tests_*.py
-    manage.py
-    setup.py
-    */settings.py
-    */migrations/*
-    */asgi.py
-    */wsgi.py
-    */venv/*
-    .venv/*
-    */site-packages/*
-    */__pycache__/*
+    */nomz/admin.py
+    */nomz/api_views.py
+    */nomz/context_processors.py
+    */nomz/filtering.py
+    */nomz/forms.py
+    */nomz/middleware.py
+    */nomz/signals.py
+    */nomz/spa_api.py
+    */nomz/spa_shell_views.py
+    */nomz/views.py
+    */nomz/ingestion/persistence.py
+    */nomz/ingestion/runner.py
+    */nomz/ingestion/sources/*
+    */nomz/ingestion/utils/resolver.py
+    */nomz/management/commands/*
 
 [report]
-exclude_lines =
-    pragma: no cover
-    def __repr__
-    raise AssertionError
-    raise NotImplementedError
-    if __name__ == .__main__.:
-    if TYPE_CHECKING:
-    @abstractmethod
-    @abc.abstractmethod
-    if 0:
-    if False:
-    if settings.DEBUG
-    class .*\bProtocol\):
-    @(abc\.)?abstractmethod
+show_missing = True
+skip_empty = True

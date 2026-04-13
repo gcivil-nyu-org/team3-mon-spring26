@@ -5,6 +5,12 @@ from . import api_views, spa_api, spa_shell_views, views
 
 # --- Health & JSON API (unchanged paths) ---------------------------------
 urlpatterns = [
+    # Vite hashed files under /assets/ (must stay ahead of SPA catch-alls)
+    path(
+        "assets/<path:asset_path>",
+        spa_shell_views.spa_asset,
+        name="spa_asset",
+    ),
     path("health/", views.health_check, name="health_check"),
     path(
         "api/restaurants/map-data/",
@@ -274,59 +280,6 @@ urlpatterns += [
     ),
 ]
 
-# --- Vite build assets (production) ----------------------------------------
-urlpatterns += [
-    re_path(
-        r"^assets/(?P<asset_path>.+)$",
-        spa_shell_views.spa_asset,
-        name="spa_vite_asset",
-    ),
-    path("friends-chat/", views.friends_chat_index, name="friends_chat_index"),
-    path(
-        "friends-chat/group/create/", views.create_group_chat, name="create_group_chat"
-    ),
-    path(
-        "friends-chat/group/<int:conversation_id>/manage/",
-        views.manage_group_member,
-        name="manage_group_member",
-    ),
-    path(
-        "friends-chat/group/<int:conversation_id>/leave/",
-        views.leave_group,
-        name="leave_group",
-    ),
-    path(
-        "friends-chat/<str:username>/",
-        views.friends_chat_detail,
-        name="friends_chat_detail",
-    ),
-    path(
-        "friends-chat/group/<int:conversation_id>/",
-        views.friends_chat_detail,
-        name="friends_chat_detail_by_id",
-    ),
-    path(
-        "friends-chat/<str:username>/recommend/",
-        views.recommend_friend_restaurant,
-        name="recommend_friend_restaurant",
-    ),
-    path(
-        "friends-chat/group/<int:conversation_id>/recommend/",
-        views.recommend_friend_restaurant,
-        name="recommend_friend_restaurant_by_id",
-    ),
-    path(
-        "friends-chat/<str:username>/toggle-shared/",
-        views.toggle_shared_restaurant,
-        name="toggle_shared_restaurant",
-    ),
-    path(
-        "friends-chat/group/<int:conversation_id>/toggle-shared/",
-        views.toggle_shared_restaurant,
-        name="toggle_shared_restaurant_by_id",
-    ),
-]
-
 # --- Legacy URL names → same SPA shell (React is the main UI) --------------
 _SPA_NAMED = [
     ("", "landing"),
@@ -366,6 +319,26 @@ _SPA_NAMED = [
     ("nomz-admin/reject/<int:user_id>/", "admin_reject_restaurant"),
     ("restaurant/<int:restaurant_id>/review/", "add_review"),
     ("restaurant/<int:restaurant_id>/", "restaurant_detail"),
+    # Friends chat (React + /api/friends-chat/); order matters vs <str:username>
+    ("friends-chat/", "friends_chat_index"),
+    ("friends-chat/group/create/", "create_group_chat"),
+    (
+        "friends-chat/group/<int:conversation_id>/manage/",
+        "manage_group_member",
+    ),
+    ("friends-chat/group/<int:conversation_id>/leave/", "leave_group"),
+    (
+        "friends-chat/group/<int:conversation_id>/recommend/",
+        "recommend_friend_restaurant_by_id",
+    ),
+    (
+        "friends-chat/group/<int:conversation_id>/toggle-shared/",
+        "toggle_shared_restaurant_by_id",
+    ),
+    ("friends-chat/group/<int:conversation_id>/", "friends_chat_detail_by_id"),
+    ("friends-chat/<str:username>/recommend/", "recommend_friend_restaurant"),
+    ("friends-chat/<str:username>/toggle-shared/", "toggle_shared_restaurant"),
+    ("friends-chat/<str:username>/", "friends_chat_detail"),
     ("messages/", "message_inbox"),
     ("messages/restaurant/<int:restaurant_id>/", "message_restaurant"),
     ("messages/conversations/<int:conversation_id>/", "conversation_detail"),
@@ -389,6 +362,7 @@ for _route, _name in _SPA_NAMED:
         )
 
 # Catch-all: deep links and any path not listed above (still not under /api/)
+# ✅ Proper catch-all for React SPA (must be LAST)
 urlpatterns.append(
-    re_path(r"^(?P<spa_path>.+)/$", spa_shell_views.spa_index),
+    re_path(r"^.*$", spa_shell_views.spa_index),
 )
