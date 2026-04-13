@@ -10,7 +10,11 @@ __pycache__/
 .Python
 build/
 develop-eggs/
-dist/
+# Only repo-root dist (avoid matching arbitrary */dist/ inside deps)
+/dist/
+# NOTE: frontend/dist/ is NOT ignored — it must ship in the deployment archive
+# so Elastic Beanstalk has a working React build even if the server-side
+# npm/vite rebuild fails.
 downloads/
 eggs/
 .eggs/
@@ -60,6 +64,9 @@ cover/
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
+
+# Local / test-generated user uploads (photo tests write red JPEGs here)
+media/restaurant_photos/
 
 # Flask stuff:
 instance/

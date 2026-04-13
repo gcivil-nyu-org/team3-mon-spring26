@@ -6,11 +6,10 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('nomz', '0002_restaurant_alter_userprofile_id'),
-        ('nomz', '0002_restaurant_restaurantphoto'),
-        ('nomz', '0003_diningoutlocation'),
-        ('nomz', '0003_loginlog_is_suspicious'),
+        ("nomz", "0002_restaurant_alter_userprofile_id"),
+        ("nomz", "0002_restaurant_restaurantphoto"),
+        ("nomz", "0003_diningoutlocation"),
+        ("nomz", "0003_loginlog_is_suspicious"),
     ]
 
-    operations = [
-    ]
+    operations = []

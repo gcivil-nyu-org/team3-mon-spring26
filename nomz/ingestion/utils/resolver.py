@@ -6,7 +6,6 @@ from difflib import SequenceMatcher
 from math import atan2, cos, radians, sin, sqrt
 from typing import Dict, Iterable, Optional, Tuple
 
-
 _NON_ALNUM_RE = re.compile(r"[^A-Z0-9]")
 
 
@@ -27,7 +26,9 @@ def _to_float(value: object) -> Optional[float]:
 
 
 def _same_or_close_zip(zip_a: str, zip_b: str) -> bool:
-    return (zip_a or "").strip()[:5] == (zip_b or "").strip()[:5] and bool(zip_a and zip_b)
+    return (zip_a or "").strip()[:5] == (zip_b or "").strip()[:5] and bool(
+        zip_a and zip_b
+    )
 
 
 def _similarity(a: str, b: str) -> float:
@@ -36,7 +37,9 @@ def _similarity(a: str, b: str) -> float:
     return SequenceMatcher(None, a.upper(), b.upper()).ratio()
 
 
-def _distance_miles(lat_a: object, lon_a: object, lat_b: object, lon_b: object) -> Optional[float]:
+def _distance_miles(
+    lat_a: object, lon_a: object, lat_b: object, lon_b: object
+) -> Optional[float]:
     lat1 = _to_float(lat_a)
     lon1 = _to_float(lon_a)
     lat2 = _to_float(lat_b)
@@ -76,7 +79,7 @@ def build_address_key(building: str, street: str, zip_code: str) -> str:
 
 
 def _normalize_for_match(value: object) -> str:
-    text = (str(value or "").strip().upper())
+    text = str(value or "").strip().upper()
     if not text:
         return ""
     text = text.replace(" STREET", " ST")
@@ -109,7 +112,11 @@ def score_match(
         candidate_street,
         candidate_zip,
     )
-    if incoming_name == (candidate.get("name") or candidate.get("name_normalized", "")).upper() and exact_key_in == exact_key_cand:
+    if (
+        incoming_name
+        == (candidate.get("name") or candidate.get("name_normalized", "")).upper()
+        and exact_key_in == exact_key_cand
+    ):
         return 1.0
 
     name_score = _similarity(incoming_name, candidate_name)
@@ -131,7 +138,12 @@ def score_match(
         elif distance <= 0.5:
             distance_score = 0.6
 
-    score = (0.65 * name_score) + (0.2 * address_score) + (0.1 * zip_match) + (0.05 * distance_score)
+    score = (
+        (0.65 * name_score)
+        + (0.2 * address_score)
+        + (0.1 * zip_match)
+        + (0.05 * distance_score)
+    )
     return max(0.0, min(1.0, score))
 
 
@@ -150,8 +162,9 @@ def resolve_restaurant(
         return None, 0.0, "no_candidates"
 
     for candidate in candidate_list:
-        candidate_name = (candidate.get("name") or candidate.get("name_normalized") or "").upper()
-        candidate_street = _normalize_for_match(candidate.get("street"))
+        candidate_name = (
+            candidate.get("name") or candidate.get("name_normalized") or ""
+        ).upper()
         candidate_zip = (candidate.get("zip_code") or "").strip()[:5]
         exact_key_in = build_address_key(
             incoming.get("building", ""),
@@ -164,14 +177,22 @@ def resolve_restaurant(
             candidate_zip,
         )
 
-        if incoming_name and exact_key_in == exact_key_candidate and incoming_name == candidate_name:
+        if (
+            incoming_name
+            and exact_key_in == exact_key_candidate
+            and incoming_name == candidate_name
+        ):
             return candidate, 1.0, "exact_name_address_match"
 
     stage_one = []
     for candidate in candidate_list:
         if not incoming_street:
             continue
-        if _same_or_close_zip(incoming_zip, candidate.get("zip_code", "")) and _normalize_for_match(candidate.get("street")).startswith(incoming_street[:5]):
+        if _same_or_close_zip(
+            incoming_zip, candidate.get("zip_code", "")
+        ) and _normalize_for_match(candidate.get("street")).startswith(
+            incoming_street[:5]
+        ):
             score = score_match(incoming, candidate)
             if score >= threshold:
                 stage_one.append((score, candidate))
@@ -184,7 +205,10 @@ def resolve_restaurant(
     for candidate in candidate_list:
         score = score_match(incoming, candidate)
         candidate_borough = (candidate.get("borough") or "").strip().upper()
-        if score >= 0.8 and (incoming_borough == candidate_borough or _same_or_close_zip(incoming_zip, candidate.get("zip_code", ""))):
+        if score >= 0.8 and (
+            incoming_borough == candidate_borough
+            or _same_or_close_zip(incoming_zip, candidate.get("zip_code", ""))
+        ):
             stage_two.append((score, candidate))
 
     if stage_two:

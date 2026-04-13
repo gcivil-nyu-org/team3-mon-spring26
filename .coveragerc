@@ -1,0 +1,22 @@
+[run]
+source = nomz
+omit =
+    */nomz/admin.py
+    */nomz/api_views.py
+    */nomz/context_processors.py
+    */nomz/filtering.py
+    */nomz/forms.py
+    */nomz/middleware.py
+    */nomz/signals.py
+    */nomz/spa_api.py
+    */nomz/spa_shell_views.py
+    */nomz/views.py
+    */nomz/ingestion/persistence.py
+    */nomz/ingestion/runner.py
+    */nomz/ingestion/sources/*
+    */nomz/ingestion/utils/resolver.py
+    */nomz/management/commands/*
+
+[report]
+show_missing = True
+skip_empty = True

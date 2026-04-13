@@ -14,7 +14,9 @@ class Command(BaseCommand):
     help = "Fetch and normalize NYC datasets from Socrata endpoints."
 
     def add_arguments(self, parser):
-        parser.add_argument("--app-token", default=None, help="Optional Socrata app token")
+        parser.add_argument(
+            "--app-token", default=None, help="Optional Socrata app token"
+        )
         parser.add_argument(
             "--skip-source",
             action="append",
@@ -42,6 +44,12 @@ class Command(BaseCommand):
             action="store_true",
             help="Pretty print rows in command output",
         )
+        parser.add_argument(
+            "--max-records-per-source",
+            type=int,
+            default=None,
+            help="Optional cap per source for faster smoke tests.",
+        )
 
     def handle(self, *args, **options):
         app_token = options["app_token"] or os.getenv("SOC_DATA_APP_TOKEN")
@@ -50,6 +58,7 @@ class Command(BaseCommand):
         pretty = options["pretty"]
         dry_run = options["dry_run"]
         no_db = options["no_db"]
+        max_records_per_source = options["max_records_per_source"]
 
         db_writer = None if no_db else DbIngestionWriter(dry_run=dry_run)
         writer_fns = []
@@ -64,16 +73,23 @@ class Command(BaseCommand):
 
         writer = self._compose_writers(writer_fns)
 
-        run_context = IngestionRunContext(dataset="nyc-socrata-ingest") if db_writer is not None else None
+        run_context = (
+            IngestionRunContext(dataset="nyc-socrata-ingest")
+            if db_writer is not None
+            else None
+        )
 
         try:
             if run_context is not None:
                 with run_context:
                     summary = run_ingestion(
                         app_token=app_token,
-                        domain=getattr(settings, "SOC_DATA_DOMAIN", "data.cityofnewyork.us"),
+                        domain=getattr(
+                            settings, "SOC_DATA_DOMAIN", "data.cityofnewyork.us"
+                        ),
                         writer=writer,
                         skip_sources=skip_sources,
+                        max_records_per_source=max_records_per_source,
                     )
                     run_status = "failed" if summary.failures else "success"
                     run_context.set_summary(
@@ -84,9 +100,12 @@ class Command(BaseCommand):
             else:
                 summary = run_ingestion(
                     app_token=app_token,
-                    domain=getattr(settings, "SOC_DATA_DOMAIN", "data.cityofnewyork.us"),
+                    domain=getattr(
+                        settings, "SOC_DATA_DOMAIN", "data.cityofnewyork.us"
+                    ),
                     writer=writer,
                     skip_sources=skip_sources,
+                    max_records_per_source=max_records_per_source,
                 )
         finally:
             while close_fns:
@@ -139,7 +158,9 @@ class Command(BaseCommand):
                         )
                     )
         if dry_run:
-            self.stdout.write(self.style.WARNING("Dry-run mode: no database writes were committed."))
+            self.stdout.write(
+                self.style.WARNING("Dry-run mode: no database writes were committed.")
+            )
 
     def _compose_writers(self, writers):
         if not writers:

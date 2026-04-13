@@ -11,33 +11,44 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from pathlib import Path
-import os
-import platform
 import socket
-from decouple import config, Csv
+import string
+
+try:
+    from decouple import config, Csv
+except ImportError:
+    from decouple import config
+
+    class Csv(object):
+        def __init__(self, cast=str, delimiter=",", strip=string.whitespace):
+            self.cast = cast
+            self.delimiter = delimiter
+            self.strip = strip
+
+        def __call__(self, value):
+            return [self.cast(s.strip(self.strip)) for s in value.split(self.delimiter)]
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Environment Configuration
-ENVIRONMENT = config('ENVIRONMENT', default='development')
+ENVIRONMENT = config("ENVIRONMENT", default="development")
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = config('SECRET_KEY', default='django-insecure-x40=kccvv69vwa$t@twavm*i#qf_y%si*@-$@$nr*s=rmn@b=#')
+SECRET_KEY = config(
+    "SECRET_KEY",
+    default="django-insecure-x40=kccvv69vwa$t@twavm*i#qf_y%si*@-$@$nr*s=rmn@b=#",
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config('DEBUG', default=False, cast=bool)
+DEBUG = config("DEBUG", default=False, cast=bool)
 
-# Build ALLOWED_HOSTS list from config and production domains
-ALLOWED_HOSTS = list(config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=Csv()))
-
-# Ensure production domain is always in ALLOWED_HOSTS
-ALLOWED_HOSTS.extend([
-    'nomz-prod.eba-phpyq9gh.us-east-1.elasticbeanstalk.com',
-])
+# Build ALLOWED_HOSTS list from config
+ALLOWED_HOSTS = list(config("ALLOWED_HOSTS", default="localhost,127.0.0.1", cast=Csv()))
 
 # Allow EC2 instance's own IP so EB health checks pass (required when DEBUG=False)
 try:
@@ -51,52 +62,54 @@ except socket.gaierror:
 # Application definition
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'django_otp',
-    'django_otp.plugins.otp_totp',
-    'django_otp.plugins.otp_static',
-    'two_factor',
-    'corsheaders',
-    'storages',
-    'nomz.apps.NomzConfig',
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    "django_otp",
+    "django_otp.plugins.otp_totp",
+    "django_otp.plugins.otp_static",
+    "two_factor",
+    "corsheaders",
+    "storages",
+    "nomz.apps.NomzConfig",
 ]
 
 MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # Add WhiteNoise for static files
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',  # Add CORS middleware
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django_otp.middleware.OTPMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",  # Add WhiteNoise for static files
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "corsheaders.middleware.CorsMiddleware",  # Add CORS middleware
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django_otp.middleware.OTPMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "nomz.middleware.SystemMonitoringMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = 'restaurants.urls'
+ROOT_URLCONF = "restaurants.urls"
 
+# Minimal TEMPLATES config for Django admin only (React SPA has no template requirements)
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
             ],
         },
     },
 ]
 
-WSGI_APPLICATION = 'restaurants.wsgi.application'
+WSGI_APPLICATION = "restaurants.wsgi.application"
 
 
 # Database
@@ -105,22 +118,22 @@ WSGI_APPLICATION = 'restaurants.wsgi.application'
 if DEBUG:
     # SQLite for development
     DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
         }
     }
 else:
     # PostgreSQL for production (AWS RDS). Defaults allow settings to load locally without .env.
     DATABASES = {
-        'default': {
-            'ENGINE': config('DB_ENGINE', default='django.db.backends.postgresql'),
-            'NAME': config('DB_NAME', default='nomz_db'),
-            'USER': config('DB_USER', default='postgres'),
-            'PASSWORD': config('DB_PASSWORD', default=''),
-            'HOST': config('DB_HOST', default='localhost'),
-            'PORT': config('DB_PORT', default='5432'),
-            'CONN_MAX_AGE': 600,  # Connection pooling
+        "default": {
+            "ENGINE": config("DB_ENGINE", default="django.db.backends.postgresql"),
+            "NAME": config("DB_NAME", default="nomz_db"),
+            "USER": config("DB_USER", default="postgres"),
+            "PASSWORD": config("DB_PASSWORD", default=""),
+            "HOST": config("DB_HOST", default="localhost"),
+            "PORT": config("DB_PORT", default="5432"),
+            "CONN_MAX_AGE": 600,  # Connection pooling
         }
     }
 # Password validation
@@ -128,16 +141,16 @@ else:
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
 
@@ -145,9 +158,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = "America/New_York"
 
 USE_I18N = True
 
@@ -160,79 +173,113 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_DIRS = [
+    BASE_DIR / "frontend" / "dist" / "assets",
+]
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
+# Vite production build (optional). When present, Django serves index.html + /assets/* from here.
+FRONTEND_DIST_DIR = BASE_DIR / "frontend" / "dist"
+# Dev-only fallback (no script tags). In production, omit so missing dist is obvious vs silent stub.
 
 # Media files
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
 
 # AWS S3 Configuration
-USE_S3 = config('USE_S3', default=False, cast=bool)
+USE_S3 = config("USE_S3", default=False, cast=bool)
 
 if USE_S3:
     # AWS S3 Settings
-    AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID')
-    AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY')
-    AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME')
-    AWS_S3_REGION_NAME = config('AWS_S3_REGION_NAME', default='us-east-1')
-    AWS_S3_CUSTOM_DOMAIN = config('AWS_S3_CUSTOM_DOMAIN', default=f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com')
-    AWS_LOCATION = 'static'
-    AWS_DEFAULT_ACL = 'public-read'
-    AWS_S3_OBJECT_PARAMETERS = {'CacheControl': 'max-age=86400'}
-    
+    AWS_ACCESS_KEY_ID = config("AWS_ACCESS_KEY_ID")
+    AWS_SECRET_ACCESS_KEY = config("AWS_SECRET_ACCESS_KEY")
+    AWS_STORAGE_BUCKET_NAME = config("AWS_STORAGE_BUCKET_NAME")
+    AWS_S3_REGION_NAME = config("AWS_S3_REGION_NAME", default="us-east-1")
+    AWS_S3_CUSTOM_DOMAIN = config(
+        "AWS_S3_CUSTOM_DOMAIN", default=f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
+    )
+    AWS_LOCATION = "static"
+    AWS_DEFAULT_ACL = "public-read"
+    AWS_S3_OBJECT_PARAMETERS = {"CacheControl": "max-age=86400"}
+
     # S3 Static Settings
-    STATIC_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/{AWS_LOCATION}/'
-    STATICFILES_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-    
+    STATIC_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/{AWS_LOCATION}/"
+    STATICFILES_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
+
     # S3 Public Media Settings
-    PUBLIC_MEDIA_LOCATION = 'media'
-    MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/{PUBLIC_MEDIA_LOCATION}/'
-    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+    PUBLIC_MEDIA_LOCATION = "media"
+    MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/{PUBLIC_MEDIA_LOCATION}/"
+    DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
 
 # CORS Configuration
-CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='http://localhost:3000,http://127.0.0.1:3000', cast=Csv())
+CORS_ALLOWED_ORIGINS = config(
+    "CORS_ALLOWED_ORIGINS",
+    default="http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173",
+    cast=Csv(),
+)
 
-# User login redirect
-LOGIN_URL = 'login'
-LOGIN_REDIRECT_URL = 'home'
-LOGOUT_REDIRECT_URL = 'login'
+# Browser challenge → React sign-in (not django-two-factor HTML at account/login/)
+LOGIN_URL = "/signin/"
+LOGIN_REDIRECT_URL = "landing"
+LOGOUT_REDIRECT_URL = "landing"
 
 # Email (Django built-in). Credentials from env only; never hardcode.
 # When EMAIL_HOST_USER is set (e.g. Gmail App Password), use SMTP; else file backend in DEBUG, console otherwise.
-EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
-EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
 EMAIL_BACKEND = (
-    'django.core.mail.backends.smtp.EmailBackend'
+    "django.core.mail.backends.smtp.EmailBackend"
     if EMAIL_HOST_USER
-    else ('django.core.mail.backends.filebased.EmailBackend' if DEBUG else 'django.core.mail.backends.console.EmailBackend')
+    else (
+        "django.core.mail.backends.filebased.EmailBackend"
+        if DEBUG
+        else "django.core.mail.backends.console.EmailBackend"
+    )
 )
-EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
-EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
-EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+EMAIL_HOST = config("EMAIL_HOST", default="smtp.gmail.com")
+EMAIL_PORT = config("EMAIL_PORT", default=587, cast=int)
+EMAIL_USE_TLS = config("EMAIL_USE_TLS", default=True, cast=bool)
 # File backend writes to this directory when DEBUG and no Gmail config.
-EMAIL_FILE_PATH = BASE_DIR / 'tmp' / 'emails'
-DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default=EMAIL_HOST_USER or 'webmaster@localhost')
+EMAIL_FILE_PATH = BASE_DIR / "tmp" / "emails"
+DEFAULT_FROM_EMAIL = config(
+    "DEFAULT_FROM_EMAIL", default=EMAIL_HOST_USER or "webmaster@localhost"
+)
 
-# CSRF Configuration - Allow both domains
-CSRF_TRUSTED_ORIGINS = [
-    'http://nomz-prod.eba-phpyq9gh.us-east-1.elasticbeanstalk.com',
-    'https://nomz-prod.eba-phpyq9gh.us-east-1.elasticbeanstalk.com',
-]
+# CSRF Configuration - Trust local and production origins from environment
+CSRF_TRUSTED_ORIGINS = list(
+    config(
+        "CSRF_TRUSTED_ORIGINS",
+        default="http://localhost:8000,http://127.0.0.1:8000",
+        cast=Csv(),
+    )
+)
+
+# OpenStreetMap tile servers require a Referer/origin; this policy keeps a safe
+# origin-only referrer on cross-origin requests (including map tiles).
+SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
 
 # Security Settings for Production
 if not DEBUG:
     # EB terminates SSL at the load balancer; redirect at Django level causes loops
     # Django receives HTTP from load balancer, so cookies must work over HTTP
-    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SECURE_SSL_REDIRECT = True
+    # Allow LB health checks over HTTP without redirecting to HTTPS.
+    SECURE_REDIRECT_EXEMPT = [r"^health/?$"]
 
-    SESSION_COOKIE_SECURE = False  # Allow cookies over HTTP (load balancer handles HTTPS)
-    CSRF_COOKIE_SECURE = False     # Allow CSRF cookies over HTTP (load balancer handles HTTPS)
-    CSRF_COOKIE_HTTPONLY = False   # Allow form to read CSRF token
+    SESSION_COOKIE_SECURE = (
+        False  # Allow cookies over HTTP (load balancer handles HTTPS)
+    )
+    CSRF_COOKIE_SECURE = (
+        False  # Allow CSRF cookies over HTTP (load balancer handles HTTPS)
+    )
+    CSRF_COOKIE_HTTPONLY = False  # Allow form to read CSRF token
     SECURE_BROWSER_XSS_FILTER = True
-    X_FRAME_OPTIONS = 'DENY'
+    X_FRAME_OPTIONS = "DENY"
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
+
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

@@ -1,6 +1,5 @@
 from nomz.ingestion.sources.socrata_client import SocrataResource
 
-
 EATERIES = SocrataResource(
     dataset_id="8792-ebcp",
     name="Directory of Eateries",

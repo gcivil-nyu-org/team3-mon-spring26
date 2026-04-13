@@ -1,0 +1,88 @@
+language: python
+python:
+  - "3.12"
+
+# Services required for testing
+services:
+  - postgresql
+
+# PostgreSQL configuration
+before_script:
+  - psql -c "CREATE DATABASE test_nomz_db;" -U postgres
+  - psql -c "CREATE USER travis WITH PASSWORD 'travis';" -U postgres || true
+  - psql -c "GRANT ALL PRIVILEGES ON DATABASE test_nomz_db TO travis;" -U postgres
+
+# Install dependencies
+install:
+  - pip install --upgrade pip
+  - pip install -r requirements.txt
+  - pip install coverage pytest pytest-django pytest-cov
+  - pip install coveralls
+  - pip install black==26.3.1 flake8==7.3.0
+
+# Environment variables for testing
+env:
+  global:
+    - DEBUG=True
+    - SECRET_KEY=test-secret-key-for-travis-ci
+    - ALLOWED_HOSTS=localhost,127.0.0.1,testserver
+    - DB_ENGINE=django.db.backends.postgresql
+    - DB_NAME=test_nomz_db
+    - DB_USER=postgres
+    - DB_PASSWORD=postgres
+    - DB_HOST=127.0.0.1
+    - DB_PORT=5432
+    - USE_S3=False
+    - ENVIRONMENT=testing
+
+# Test script
+script:
+  - python manage.py migrate --no-input
+  - coverage run --source='nomz' manage.py test --no-input --verbosity=2
+  - black --check .
+  - flake8 .
+  - python manage.py check
+
+# Send coverage to Coveralls
+after_success:
+  - coverage xml
+  - coveralls 
+
+# Build React frontend before deploying
+before_deploy:
+  - nvm install 20
+  - nvm use 20
+  - cd frontend && npm install && npm run build && cd ..
+  - python manage.py collectstatic --noinput
+  - test -f frontend/dist/index.html
+
+# Deploy to AWS Elastic Beanstalk on production branch
+deploy:
+  provider: elasticbeanstalk
+  access_key_id: $AWS_ACCESS_KEY_ID
+  secret_access_key: $AWS_SECRET_ACCESS_KEY
+  region: us-east-1
+  app: nomz-app
+  env: nomz-prod
+  bucket_name: nomz-static-files
+  bucket_path: deployments
+  on:
+    branch: production
+  cleanup: false
+  skip_cleanup: true
+
+# Branches to build
+branches:
+  only:
+    - develop
+    - production
+    - main
+
+# Notifications (optional)
+notifications:
+  email:
+    on_success: change
+    on_failure: always
+
+# Build timeouts
+timeout: 600

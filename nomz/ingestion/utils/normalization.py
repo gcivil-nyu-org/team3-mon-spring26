@@ -4,6 +4,11 @@ from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from typing import Any, Iterable, List
 
+NYC_MIN_LAT = Decimal("40.0")
+NYC_MAX_LAT = Decimal("41.5")
+NYC_MIN_LON = Decimal("-75.5")
+NYC_MAX_LON = Decimal("-72.0")
+
 
 def to_str(value: Any) -> str:
     if value is None:
@@ -39,6 +44,31 @@ def to_decimal_str(value: Any) -> str | None:
     except (InvalidOperation, ValueError):
         return None
     return str(normalized.quantize(Decimal("0.000001")))
+
+
+def sanitize_nyc_coordinate_pair(
+    latitude: Any,
+    longitude: Any,
+) -> tuple[str | None, str | None]:
+    lat_text = to_decimal_str(latitude)
+    lon_text = to_decimal_str(longitude)
+    if lat_text is None or lon_text is None:
+        return lat_text, lon_text
+
+    try:
+        lat = Decimal(lat_text)
+        lon = Decimal(lon_text)
+    except (InvalidOperation, ValueError):
+        return None, None
+
+    # Socrata sometimes emits placeholder 0/0 for missing coordinates.
+    if lat == 0 and lon == 0:
+        return None, None
+
+    if not (NYC_MIN_LAT <= lat <= NYC_MAX_LAT and NYC_MIN_LON <= lon <= NYC_MAX_LON):
+        return None, None
+
+    return lat_text, lon_text
 
 
 def split_list_fields(raw: Any) -> List[str]:

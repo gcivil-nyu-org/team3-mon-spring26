@@ -9,20 +9,45 @@ class Migration(migrations.Migration):
 
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ('nomz', '0001_initial'),
+        ("nomz", "0001_initial"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='LoginLog',
+            name="LoginLog",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('username', models.CharField(help_text='Attempted username', max_length=150)),
-                ('ip_address', models.GenericIPAddressField(blank=True, null=True)),
-                ('status', models.CharField(choices=[('Success', 'Success'), ('Failure', 'Failure')], max_length=20)),
-                ('timestamp', models.DateTimeField(auto_now_add=True)),
-                ('user_agent', models.TextField(blank=True, null=True)),
-                ('user', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "username",
+                    models.CharField(help_text="Attempted username", max_length=150),
+                ),
+                ("ip_address", models.GenericIPAddressField(blank=True, null=True)),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[("Success", "Success"), ("Failure", "Failure")],
+                        max_length=20,
+                    ),
+                ),
+                ("timestamp", models.DateTimeField(auto_now_add=True)),
+                ("user_agent", models.TextField(blank=True, null=True)),
+                (
+                    "user",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
         ),
     ]

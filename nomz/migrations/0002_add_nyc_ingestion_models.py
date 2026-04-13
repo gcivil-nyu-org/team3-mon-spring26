@@ -15,9 +15,28 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="DataIngestionRun",
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
                 ("dataset", models.CharField(max_length=64)),
-                ("status", models.CharField(choices=[("running", "Running"), ("success", "Success"), ("failed", "Failed")], default="running", max_length=20)),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("running", "Running"),
+                            ("success", "Success"),
+                            ("failed", "Failed"),
+                        ],
+                        default="running",
+                        max_length=20,
+                    ),
+                ),
                 ("started_at", models.DateTimeField(auto_now_add=True)),
                 ("finished_at", models.DateTimeField(blank=True, null=True)),
                 ("records_fetched", models.IntegerField(default=0)),
@@ -36,22 +55,57 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="RestaurantSourceRecord",
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
-                ("source", models.CharField(choices=[("EATERIES", "Directory of Eateries"), ("DINING_OUT", "Dining Out NYC Locations"), ("DOHMH", "DOHMH Restaurant Inspection Results")], max_length=20)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "source",
+                    models.CharField(
+                        choices=[
+                            ("EATERIES", "Directory of Eateries"),
+                            ("DINING_OUT", "Dining Out NYC Locations"),
+                            ("DOHMH", "DOHMH Restaurant Inspection Results"),
+                        ],
+                        max_length=20,
+                    ),
+                ),
                 ("external_id", models.CharField(max_length=200)),
                 ("external_name", models.CharField(max_length=255)),
-                ("external_address", models.CharField(blank=True, max_length=255, null=True)),
+                (
+                    "external_address",
+                    models.CharField(blank=True, max_length=255, null=True),
+                ),
                 ("raw_payload", models.JSONField(blank=True, null=True)),
-                ("confidence", models.DecimalField(decimal_places=3, default=0.0, max_digits=4)),
+                (
+                    "confidence",
+                    models.DecimalField(decimal_places=3, default=0.0, max_digits=4),
+                ),
                 ("source_url", models.URLField(blank=True, max_length=500, null=True)),
                 ("first_seen_at", models.DateTimeField(auto_now_add=True)),
                 ("last_seen_at", models.DateTimeField(auto_now=True)),
-                ("restaurant", models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name="sources", to="nomz.restaurant")),
+                (
+                    "restaurant",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="sources",
+                        to="nomz.restaurant",
+                    ),
+                ),
             ],
             options={
                 "indexes": [
-                    models.Index(fields=["source", "external_id"], name="nomz_source_ext_1"),
-                    models.Index(fields=["restaurant", "source"], name="nomz_source_rest_2"),
+                    models.Index(
+                        fields=["source", "external_id"], name="nomz_source_ext_1"
+                    ),
+                    models.Index(
+                        fields=["restaurant", "source"], name="nomz_source_rest_2"
+                    ),
                 ],
                 "unique_together": {("source", "external_id")},
             },
@@ -59,7 +113,15 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="InspectionRecord",
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
                 ("inspection_date", models.DateField()),
                 ("inspection_key", models.CharField(max_length=200)),
                 ("grade", models.CharField(blank=True, max_length=12, null=True)),
@@ -67,19 +129,32 @@ class Migration(migrations.Migration):
                 ("critical_violations", models.IntegerField(default=0)),
                 ("noncritical_violations", models.IntegerField(default=0)),
                 ("violation_count", models.IntegerField(default=0)),
-                ("inspection_type", models.CharField(blank=True, max_length=128, null=True)),
+                (
+                    "inspection_type",
+                    models.CharField(blank=True, max_length=128, null=True),
+                ),
                 ("action", models.CharField(blank=True, max_length=255, null=True)),
                 ("violations", models.JSONField(blank=True, default=list)),
                 ("camis", models.CharField(blank=True, max_length=80, null=True)),
                 ("boro", models.CharField(blank=True, max_length=80, null=True)),
                 ("raw_payload", models.JSONField(blank=True, null=True)),
                 ("created_at", models.DateTimeField(auto_now_add=True)),
-                ("restaurant", models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name="inspections", to="nomz.restaurant")),
+                (
+                    "restaurant",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="inspections",
+                        to="nomz.restaurant",
+                    ),
+                ),
             ],
             options={
                 "ordering": ["-inspection_date"],
                 "indexes": [
-                    models.Index(fields=["restaurant", "inspection_date"], name="nomz_insp_rest_1"),
+                    models.Index(
+                        fields=["restaurant", "inspection_date"],
+                        name="nomz_insp_rest_1",
+                    ),
                     models.Index(fields=["grade"], name="nomz_insp_grade_1"),
                 ],
                 "unique_together": {("restaurant", "inspection_key")},
@@ -103,7 +178,9 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="restaurant",
             name="name_normalized",
-            field=models.CharField(blank=True, db_index=True, default="", max_length=255),
+            field=models.CharField(
+                blank=True, db_index=True, default="", max_length=255
+            ),
         ),
         migrations.AddField(
             model_name="restaurant",
@@ -133,17 +210,23 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="restaurant",
             name="latitude",
-            field=models.DecimalField(blank=True, decimal_places=6, max_digits=9, null=True),
+            field=models.DecimalField(
+                blank=True, decimal_places=6, max_digits=9, null=True
+            ),
         ),
         migrations.AddField(
             model_name="restaurant",
             name="longitude",
-            field=models.DecimalField(blank=True, decimal_places=6, max_digits=10, null=True),
+            field=models.DecimalField(
+                blank=True, decimal_places=6, max_digits=10, null=True
+            ),
         ),
         migrations.AddField(
             model_name="restaurant",
             name="composite_score",
-            field=models.DecimalField(blank=True, decimal_places=2, max_digits=5, null=True),
+            field=models.DecimalField(
+                blank=True, decimal_places=2, max_digits=5, null=True
+            ),
         ),
         migrations.AddField(
             model_name="restaurant",
@@ -167,18 +250,27 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="restaurant",
-            index=models.Index(fields=["name_normalized", "zip_code"], name="nomz_restau_name_no_1bc4bb_idx"),
+            index=models.Index(
+                fields=["name_normalized", "zip_code"],
+                name="nomz_restau_name_no_1bc4bb_idx",
+            ),
         ),
         migrations.AddIndex(
             model_name="restaurant",
-            index=models.Index(fields=["borough", "zip_code"], name="nomz_restau_borough_8e6a1a_idx"),
+            index=models.Index(
+                fields=["borough", "zip_code"], name="nomz_restau_borough_8e6a1a_idx"
+            ),
         ),
         migrations.AddIndex(
             model_name="restaurant",
-            index=models.Index(fields=["is_active"], name="nomz_restau_is_acti_f59dd9_idx"),
+            index=models.Index(
+                fields=["is_active"], name="nomz_restau_is_acti_f59dd9_idx"
+            ),
         ),
         migrations.AddIndex(
             model_name="restaurant",
-            index=models.Index(fields=["latitude", "longitude"], name="nomz_restau_latitud_09565a_idx"),
+            index=models.Index(
+                fields=["latitude", "longitude"], name="nomz_restau_latitud_09565a_idx"
+            ),
         ),
     ]
