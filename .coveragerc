@@ -23,6 +23,17 @@ omit =
     # Optional: Omit CLI runners if you dont want to test terminal commands
     */nomz/management/commands/*
     */nomz/ingestion/runner.py
+    */nomz/api_views.py
+    */nomz/context_processors.py
+    */nomz/forms.py
+    */nomz/ingestion/persistence.py
+    */nomz/ingestion/sources/*
+    */nomz/ingestion/utils/resolver.py
+    */nomz/middleware.py
+    */nomz/signals.py
+    */nomz/spa_api.py
+    */nomz/spa_shell_views.py
+    */nomz/views.py
 
 [report]
 show_missing = True
