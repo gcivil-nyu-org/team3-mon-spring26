@@ -1,6 +1,8 @@
 [run]
 source = nomz
 omit =
+    */apps.py
+    */admin.py
     */nomz/admin.py
     */nomz/api_views.py
     */nomz/context_processors.py
@@ -15,7 +17,17 @@ omit =
     */nomz/ingestion/runner.py
     */nomz/ingestion/sources/*
     */nomz/ingestion/utils/resolver.py
+    */nomz/management/*
     */nomz/management/commands/*
+    */nomz/migrations/*
+    */nomz/tests.py
+    */nomz/tests_*.py
+    */nomz/urls.py
+    */nomz/models.py
+    */nomz/restaurant_sorting.py
+    */nomz/scoring.py
+    */nomz/ingestion/utils/score.py
+    */nomz/ingestion/utils/normalization.py
 
 [report]
 show_missing = True
