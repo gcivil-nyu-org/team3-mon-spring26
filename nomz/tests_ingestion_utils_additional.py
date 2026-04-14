@@ -40,7 +40,9 @@ class IngestionNormalizationUtilsTests(SimpleTestCase):
 
     def test_first_non_empty_returns_first_trimmed_value(self):
         row = {"primary": "   ", "fallback": "  value ", "other": "x"}
-        self.assertEqual(first_non_empty(row, ["primary", "fallback", "other"]), "value")
+        self.assertEqual(
+            first_non_empty(row, ["primary", "fallback", "other"]), "value"
+        )
         self.assertEqual(first_non_empty({}, ["missing"]), "")
 
     def test_to_decimal_str_parses_and_quantizes(self):
@@ -57,7 +59,9 @@ class IngestionNormalizationUtilsTests(SimpleTestCase):
         )
         self.assertEqual(sanitize_nyc_coordinate_pair("0", "0"), (None, None))
         self.assertEqual(sanitize_nyc_coordinate_pair("42.0", "-74.0"), (None, None))
-        self.assertEqual(sanitize_nyc_coordinate_pair("40.7", "bad"), ("40.700000", None))
+        self.assertEqual(
+            sanitize_nyc_coordinate_pair("40.7", "bad"), ("40.700000", None)
+        )
 
     def test_sanitize_nyc_coordinate_pair_handles_decimal_conversion_exception(self):
         with patch(
@@ -87,7 +91,9 @@ class IngestionScoreUtilsPureFunctionTests(SimpleTestCase):
         self.assertIsNone(_to_local_date(None))
         self.assertIsNone(_to_local_date("2026-01-01"))
         self.assertEqual(_to_local_date(today), today)
-        self.assertEqual(_to_local_date(datetime(2025, 1, 2, 5, 0, 0)), date(2025, 1, 2))
+        self.assertEqual(
+            _to_local_date(datetime(2025, 1, 2, 5, 0, 0)), date(2025, 1, 2)
+        )
 
         self.assertEqual(_grade_score("A"), 95)
         self.assertEqual(_grade_score("B"), 72)
@@ -164,7 +170,9 @@ class IngestionScoreUtilsPureFunctionTests(SimpleTestCase):
 
 class IngestionScoreComputationTests(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username="score_user", password="pass12345")
+        self.user = User.objects.create_user(
+            username="score_user", password="pass12345"
+        )
         self.restaurant = Restaurant.objects.create(
             name="Utility Score Spot",
             owner=self.user,
@@ -256,7 +264,9 @@ class IngestionScoreComputationTests(TestCase):
             rating=2,
             value_rating=2,
         )
-        newer_user = User.objects.create_user(username="score_user_2", password="pass12345")
+        newer_user = User.objects.create_user(
+            username="score_user_2", password="pass12345"
+        )
         newer_review = Review.objects.create(
             restaurant=self.restaurant,
             user=newer_user,
