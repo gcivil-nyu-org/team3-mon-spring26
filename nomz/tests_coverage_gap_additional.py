@@ -176,7 +176,9 @@ class MigrationBackfillFunctionTests(SimpleTestCase):
 
 class RestaurantSortingGapTests(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username="sort_gap_user", password="pass12345")
+        self.user = User.objects.create_user(
+            username="sort_gap_user", password="pass12345"
+        )
         self.r1 = Restaurant.objects.create(
             name="Gap A",
             is_active=True,
@@ -281,7 +283,9 @@ class RestaurantSortingGapTests(TestCase):
                 self.assertTrue(result)
 
     def test_recommend_restaurants_returns_empty_without_preference_record(self):
-        another_user = User.objects.create_user(username="no_pref_user", password="pass12345")
+        another_user = User.objects.create_user(
+            username="no_pref_user", password="pass12345"
+        )
         self.assertEqual(recommend_restaurants_for_user(another_user), [])
 
     def test_recommend_restaurants_returns_empty_when_preferences_blank(self):
@@ -325,7 +329,9 @@ class RestaurantSortingGapTests(TestCase):
         self.assertIsNotNone(prefs.last_recommendation_recalculated_at)
 
     def test_recommend_restaurants_quality_score_cast_error_is_handled(self):
-        user = User.objects.create_user(username="float_error_user", password="pass12345")
+        user = User.objects.create_user(
+            username="float_error_user", password="pass12345"
+        )
         UserPreference.objects.create(
             user=user,
             favorite_cuisines=["vegetarian"],
@@ -351,7 +357,9 @@ class RestaurantSortingGapTests(TestCase):
 
 class RestaurantSortingHelperFunctionTests(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username="helper_user", password="pass12345")
+        self.user = User.objects.create_user(
+            username="helper_user", password="pass12345"
+        )
         self.restaurant = Restaurant.objects.create(
             name="Helper Thai Spot",
             cuisine_type="thai",
@@ -367,9 +375,14 @@ class RestaurantSortingHelperFunctionTests(TestCase):
             is_flagged=False,
         )
 
-    def test_calculate_historical_satisfaction_for_restaurant_no_and_similar_reviews(self):
+    def test_calculate_historical_satisfaction_for_restaurant_no_and_similar_reviews(
+        self,
+    ):
         self.assertEqual(
-            calculate_historical_satisfaction_for_restaurant(self.user, self.restaurant), 0
+            calculate_historical_satisfaction_for_restaurant(
+                self.user, self.restaurant
+            ),
+            0,
         )
 
         Review.objects.create(

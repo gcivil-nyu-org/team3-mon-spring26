@@ -21,7 +21,9 @@ from .models import (
 
 class RestaurantOwnershipClaimModelTests(TestCase):
     def setUp(self):
-        self.claimant = User.objects.create_user(username="claimant", password="pass12345")
+        self.claimant = User.objects.create_user(
+            username="claimant", password="pass12345"
+        )
         self.other_owner = User.objects.create_user(
             username="existing_owner", password="pass12345"
         )
@@ -177,7 +179,9 @@ class ConversationAccessModelTests(TestCase):
     def setUp(self):
         self.owner = User.objects.create_user(username="owner", password="pass12345")
         self.diner = User.objects.create_user(username="diner", password="pass12345")
-        self.other_user = User.objects.create_user(username="other", password="pass12345")
+        self.other_user = User.objects.create_user(
+            username="other", password="pass12345"
+        )
         self.restaurant = Restaurant.objects.create(
             owner=self.owner,
             name="Conversation Access Spot",
@@ -198,14 +202,20 @@ class ConversationAccessModelTests(TestCase):
 
 class FriendConversationModelTests(TestCase):
     def setUp(self):
-        self.user1 = User.objects.create_user(username="friend_one", password="pass12345")
-        self.user2 = User.objects.create_user(username="friend_two", password="pass12345")
+        self.user1 = User.objects.create_user(
+            username="friend_one", password="pass12345"
+        )
+        self.user2 = User.objects.create_user(
+            username="friend_two", password="pass12345"
+        )
         self.user3 = User.objects.create_user(
             username="friend_three", password="pass12345"
         )
 
     def test_get_participants_falls_back_to_legacy_user_fields(self):
-        conversation = FriendConversation.objects.create(user1=self.user1, user2=self.user2)
+        conversation = FriendConversation.objects.create(
+            user1=self.user1, user2=self.user2
+        )
         participants = set(conversation.get_participants().values_list("id", flat=True))
         self.assertEqual(participants, {self.user1.id, self.user2.id})
 

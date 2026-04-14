@@ -63,7 +63,9 @@ class ScoringHelpersTests(TestCase):
 
 class RefreshRestaurantCompositeTests(TestCase):
     def setUp(self):
-        self.owner = User.objects.create_user(username="score_owner", password="pass12345")
+        self.owner = User.objects.create_user(
+            username="score_owner", password="pass12345"
+        )
         self.restaurant = Restaurant.objects.create(
             owner=self.owner,
             name="Scoring Test Restaurant",
@@ -93,7 +95,9 @@ class RefreshRestaurantCompositeTests(TestCase):
             "recency_score": 0.6,
         }
 
-        with patch("nomz.scoring.compute_restaurant_composite_score", return_value=payload):
+        with patch(
+            "nomz.scoring.compute_restaurant_composite_score", return_value=payload
+        ):
             result = refresh_restaurant_composite(
                 self.restaurant,
                 trigger_source=CompositeScoreHistory.TRIGGER_MANAGEMENT_COMMAND,
@@ -129,7 +133,9 @@ class RefreshRestaurantCompositeTests(TestCase):
             "review_confidence": Decimal("0.7"),
         }
 
-        with patch("nomz.scoring.compute_restaurant_composite_score", return_value=payload):
+        with patch(
+            "nomz.scoring.compute_restaurant_composite_score", return_value=payload
+        ):
             refresh_restaurant_composite(
                 self.restaurant,
                 triggered_by=AnonymousUser(),
