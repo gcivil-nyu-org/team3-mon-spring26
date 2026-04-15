@@ -2,15 +2,17 @@ from pathlib import Path
 from types import SimpleNamespace
 from tempfile import TemporaryDirectory
 
+import pytest
 from django.conf import settings
 from django.http import Http404
-from django.test import SimpleTestCase, override_settings
+from django.test import TestCase, override_settings
 from django.test.client import RequestFactory
 
 from nomz import spa_shell_views
 
 
-class SpaShellViewsTests(SimpleTestCase):
+@pytest.mark.django_db
+class SpaShellViewsTests(TestCase):
     def setUp(self):
         self.factory = RequestFactory()
 

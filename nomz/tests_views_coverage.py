@@ -17,6 +17,7 @@ from nomz.views import (
     admin_recalculate_scores,
     admin_resolve_report,
     admin_toggle_user_status,
+    create_group_chat,
     manage_group_member,
     message_restaurant,
     recommend_friend_restaurant,
@@ -34,6 +35,7 @@ urlpatterns = [
     path("dashboard/", _ok_view, name="dashboard"),
     path("profile/", _ok_view, name="profile"),
     path("moderation/", _ok_view, name="admin_moderation_dashboard"),
+    path("friends/", _ok_view, name="friends_chat_index"),
     path("restaurant/<int:restaurant_id>/", _ok_view, name="restaurant_detail"),
     path(
         "messages/conversations/<int:conversation_id>/",
@@ -71,6 +73,11 @@ urlpatterns = [
         "test/messages/restaurant/<int:restaurant_id>/",
         message_restaurant,
         name="test_message_restaurant",
+    ),
+    path(
+        "test/friends/group/create/",
+        create_group_chat,
+        name="test_create_group_chat",
     ),
     path(
         "test/friends/group/<int:conversation_id>/manage/",
@@ -551,4 +558,60 @@ class ViewsCoverageTests(TestCase):
         self.assertEqual(removed.url, reverse("friends_chat_detail_by_id", args=[convo.id]))
         self.assertFalse(
             FriendSharedRestaurant.objects.filter(conversation=convo, restaurant=restaurant).exists()
+        )
+
+    def test_create_group_chat_post_invalid_and_valid_data(self):
+        self.client.force_login(self.diner)
+        participant = User.objects.create_user(
+            username="group_participant_diner",
+            password="pass12345",
+        )
+        UserProfile.objects.create(user=participant, role="diner")
+
+        # Invalid branch: empty group name -> error + redirect.
+        invalid = self.client.post(
+            reverse("test_create_group_chat"),
+            {"group_name": "", "participants": [str(participant.id)]},
+            follow=True,
+        )
+        self.assertEqual(invalid.status_code, 200)
+        self.assertTrue(
+            any("group name is required" in t.lower() for t in self._message_texts(invalid))
+        )
+
+        # Valid branch: group is created and redirects to detail.
+        valid = self.client.post(
+            reverse("test_create_group_chat"),
+            {"group_name": "Coverage Group", "participants": [str(participant.id)]},
+        )
+        self.assertEqual(valid.status_code, 302)
+        created = FriendConversation.objects.filter(
+            is_group=True, name="Coverage Group", creator=self.diner
+        ).first()
+        self.assertIsNotNone(created)
+        self.assertTrue(created.participants.filter(id=self.diner.id).exists())
+        self.assertTrue(created.participants.filter(id=participant.id).exists())
+
+    def test_manage_group_member_non_owner_permission_error(self):
+        creator = User.objects.create_user(
+            username="manage_creator_x",
+            password="pass12345",
+        )
+        UserProfile.objects.create(user=creator, role="diner")
+        conv = FriendConversation.objects.create(
+            name="Manage Group X",
+            is_group=True,
+            creator=creator,
+        )
+        conv.participants.add(creator)
+
+        self.client.force_login(self.diner)  # not the creator
+        denied = self.client.post(
+            reverse("test_manage_group_member", args=[conv.id]),
+            {"action": "add", "username": "nobody"},
+            follow=True,
+        )
+        self.assertEqual(denied.status_code, 200)
+        self.assertTrue(
+            any("only the group creator can manage members" in t.lower() for t in self._message_texts(denied))
         )

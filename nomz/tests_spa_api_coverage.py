@@ -8,7 +8,19 @@ from django.utils.http import urlsafe_base64_encode
 from django.utils.encoding import force_bytes
 from rest_framework.test import APIClient
 
-from nomz.models import ModerationReport, Restaurant, Review, SystemAuditLog, UserPreference, UserProfile
+from nomz.models import (
+    CompositeScoreAnomaly,
+    CompositeScoreHistory,
+    FriendConversation,
+    FriendMessage,
+    FriendSharedRestaurant,
+    ModerationReport,
+    Restaurant,
+    Review,
+    SystemAuditLog,
+    UserPreference,
+    UserProfile,
+)
 
 
 pytestmark = pytest.mark.django_db
@@ -448,3 +460,163 @@ def test_diner_recommendations_permission_and_preference_branches():
         assert "No restaurants currently match your saved preferences" in payload["message"]
         assert payload["restaurants"] == []
         assert mock_recommend.called
+
+
+def test_admin_resolve_score_anomaly_api_staff_gate_and_resolve_paths():
+    client = APIClient()
+    non_staff = _create_user("anom_non_staff", role="diner")
+    staff = _create_user("anom_staff", role="diner", is_staff=True)
+    restaurant = Restaurant.objects.create(
+        name="Anomaly Spot",
+        cuisine_type="other",
+        price_range="$$",
+    )
+    score_history = CompositeScoreHistory.objects.create(
+        restaurant=restaurant,
+        trigger_source=CompositeScoreHistory.TRIGGER_OTHER,
+        composite_score=80,
+    )
+    unresolved = CompositeScoreAnomaly.objects.create(
+        restaurant=restaurant,
+        score_history=score_history,
+        anomaly_type=CompositeScoreAnomaly.TYPE_LARGE_DELTA,
+        severity=CompositeScoreAnomaly.SEVERITY_HIGH,
+        details={"delta": 20},
+        is_resolved=False,
+    )
+    already_resolved = CompositeScoreAnomaly.objects.create(
+        restaurant=restaurant,
+        score_history=score_history,
+        anomaly_type=CompositeScoreAnomaly.TYPE_LOW_CONFIDENCE_HIGH_SCORE,
+        severity=CompositeScoreAnomaly.SEVERITY_MEDIUM,
+        details={"confidence": 0.1},
+        is_resolved=True,
+    )
+
+    client.force_login(non_staff)
+    denied = client.post(f"/api/admin/score-anomalies/{unresolved.id}/resolve/")
+    assert denied.status_code == 403
+    assert denied.json()["error"] == "Staff access required."
+
+    client.force_login(staff)
+    already = client.post(f"/api/admin/score-anomalies/{already_resolved.id}/resolve/")
+    assert already.status_code == 200
+    assert already.json() == {"success": True, "already_resolved": True}
+
+    resolved = client.post(f"/api/admin/score-anomalies/{unresolved.id}/resolve/")
+    assert resolved.status_code == 200
+    assert resolved.json() == {"success": True, "already_resolved": False}
+    unresolved.refresh_from_db()
+    assert unresolved.is_resolved is True
+    assert unresolved.resolved_by_id == staff.id
+
+
+def test_friends_chat_list_api_get_and_post_branch_conditions():
+    client = APIClient()
+    user = _create_user("chat_user", role="diner")
+    other = _create_user("chat_other", role="diner")
+    third = _create_user("chat_third", role="diner")
+    convo = FriendConversation.objects.create(
+        user1=user,
+        user2=other,
+        is_group=False,
+    )
+    convo.participants.add(user, other)
+    FriendMessage.objects.create(conversation=convo, sender=other, body="hello", is_read=False)
+
+    client.force_login(user)
+    listing = client.get("/api/friends-chat/")
+    assert listing.status_code == 200
+    payload = listing.json()
+    assert payload["conversations"]
+    usernames = {u["username"] for u in payload["other_users"]}
+    assert user.username not in usernames
+    assert {other.username, third.username}.issubset(usernames)
+
+    self_chat = client.post(
+        "/api/friends-chat/",
+        data=json.dumps({"username": user.username}),
+        content_type="application/json",
+    )
+    assert self_chat.status_code == 400
+    assert self_chat.json()["error"] == "You cannot chat with yourself."
+
+    missing_user = client.post(
+        "/api/friends-chat/",
+        data=json.dumps({"username": "missing_diner"}),
+        content_type="application/json",
+    )
+    assert missing_user.status_code == 404
+    assert "not found" in missing_user.json()["error"].lower()
+
+    created = client.post(
+        "/api/friends-chat/",
+        data=json.dumps({"username": third.username}),
+        content_type="application/json",
+    )
+    assert created.status_code == 201
+    assert created.json()["conversation"]["id"]
+
+    # Existing one-on-one conversation should be re-used.
+    reused = client.post(
+        "/api/friends-chat/",
+        data=json.dumps({"username": other.username}),
+        content_type="application/json",
+    )
+    assert reused.status_code == 201
+    assert reused.json()["conversation"]["id"] == convo.id
+
+
+def test_friends_chat_detail_api_access_get_and_post_conditions():
+    client = APIClient()
+    owner = _create_user("detail_owner", role="diner")
+    friend = _create_user("detail_friend", role="diner")
+    outsider = _create_user("detail_outsider", role="diner")
+    restaurant = Restaurant.objects.create(
+        name="Shared List Spot",
+        cuisine_type="other",
+        price_range="$$",
+    )
+    convo = FriendConversation.objects.create(user1=owner, user2=friend, is_group=False)
+    convo.participants.add(owner, friend)
+    unread = FriendMessage.objects.create(
+        conversation=convo,
+        sender=friend,
+        body="unread message",
+        is_read=False,
+    )
+    FriendSharedRestaurant.objects.create(
+        conversation=convo,
+        restaurant=restaurant,
+        added_by=owner,
+    )
+
+    client.force_login(outsider)
+    denied = client.get(f"/api/friends-chat/{convo.id}/")
+    assert denied.status_code == 403
+    assert denied.json()["error"] == "Access denied."
+
+    client.force_login(owner)
+    get_ok = client.get(f"/api/friends-chat/{convo.id}/")
+    assert get_ok.status_code == 200
+    get_payload = get_ok.json()
+    assert get_payload["messages"]
+    assert get_payload["shared_restaurants"]
+    unread.refresh_from_db()
+    assert unread.is_read is True
+
+    empty_body = client.post(
+        f"/api/friends-chat/{convo.id}/",
+        data=json.dumps({"body": "   "}),
+        content_type="application/json",
+    )
+    assert empty_body.status_code == 400
+    assert empty_body.json()["error"] == "Message body is required."
+
+    sent = client.post(
+        f"/api/friends-chat/{convo.id}/",
+        data=json.dumps({"body": "new message"}),
+        content_type="application/json",
+    )
+    assert sent.status_code == 201
+    assert sent.json()["message"]["body"] == "new message"

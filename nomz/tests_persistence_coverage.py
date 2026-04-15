@@ -1,9 +1,15 @@
 from unittest.mock import MagicMock, patch
 
-from django.db import IntegrityError
+from django.db import IntegrityError, OperationalError
 from django.test import SimpleTestCase, TestCase
 
-from nomz.ingestion.persistence import DbIngestionWriter, IngestionRunContext, IngestionStats
+from nomz.ingestion.persistence import (
+    DbIngestionWriter,
+    IngestionRunContext,
+    IngestionStats,
+    _normalize_source_record_id,
+)
+from nomz.models import Restaurant
 
 
 class _CandidateQS:
@@ -20,7 +26,69 @@ class _CandidateQS:
         return iter(self._rows)
 
 
-class PersistenceCoverageTests(SimpleTestCase):
+class PersistenceCoverageTests(TestCase):
+    def test_normalize_source_record_id_hashes_seed_fields_without_external_id(self):
+        row = {
+            "name": "Near Match Pizza",
+            "street": "Main St",
+            "zip_code": "10001",
+            "borough": "Manhattan",
+            "latitude": "40.7128",
+            "longitude": "-74.0060",
+        }
+        source_id = _normalize_source_record_id("EATERIES", row)
+        assert len(source_id) == 40  # sha1 hex digest length
+        assert source_id != ""
+
+        # Presence of source_external_id should bypass hashing branch.
+        row["source_external_id"] = "EXT-123"
+        assert _normalize_source_record_id("EATERIES", row) == "EXT-123"
+
+    def test_ingest_retries_on_sqlite_lock_and_then_succeeds(self):
+        writer = DbIngestionWriter(dry_run=False)
+        record = {"source": "EATERIES", "name": "Retry Spot"}
+
+        with patch.object(
+            writer,
+            "_handle_restaurant_source_record",
+            side_effect=[OperationalError("database is locked"), None],
+        ) as mock_handle, patch("nomz.ingestion.persistence.time.sleep") as mock_sleep:
+            writer.ingest(record)
+
+        assert mock_handle.call_count == 2
+        assert mock_sleep.called
+        assert writer.stats.records_failed == 0
+        assert writer.stats.records_processed == 1
+
+    def test_ingest_raises_and_counts_failure_for_non_lock_operational_error(self):
+        writer = DbIngestionWriter(dry_run=False)
+        record = {"source": "EATERIES", "name": "Fail Spot"}
+
+        with patch.object(
+            writer,
+            "_handle_restaurant_source_record",
+            side_effect=OperationalError("some other db error"),
+        ):
+            try:
+                writer.ingest(record)
+                raised = False
+            except OperationalError:
+                raised = True
+        assert raised is True
+        assert writer.stats.records_failed == 1
+
+    def test_coerce_date_parsing_branches(self):
+        writer = DbIngestionWriter(dry_run=True)
+
+        # ISO parse branch (fromisoformat)
+        assert str(writer._coerce_date("2026-04-15T11:30:00")) == "2026-04-15"
+        # "T" split fallback branch
+        assert str(writer._coerce_date("2026-04-16Tbad")) == "2026-04-16"
+        # fmt loop branch
+        assert str(writer._coerce_date("04/17/2026")) == "2026-04-17"
+        # final none branch
+        assert writer._coerce_date("not-a-date") is None
+
     def test_resolve_restaurant_matched_record_updates_and_syncs(self):
         writer = DbIngestionWriter(dry_run=False)
         record = {
@@ -56,6 +124,49 @@ class PersistenceCoverageTests(SimpleTestCase):
         mock_sync.assert_called_once_with(matched_restaurant)
         assert writer.stats.records_matched == 1
         assert writer.stats.records_updated == 1
+
+    def test_resolve_restaurant_fuzzy_like_match_with_similar_names_and_same_zip(self):
+        """
+        Creates two near-matching restaurants with identical ZIP and verifies
+        resolver-driven match path updates existing restaurant instead of creating.
+        """
+        # Use real DB objects here to approximate fuzzy-match candidate setup.
+        r1 = Restaurant.objects.create(
+            name="Noodle House Manhattan",
+            cuisine_type="other",
+            price_range="$$",
+            zip_code="10001",
+            street="100 Main St",
+            is_active=True,
+        )
+        Restaurant.objects.create(
+            name="Noodle House Manhatan",  # intentional near-match typo
+            cuisine_type="other",
+            price_range="$$",
+            zip_code="10001",
+            street="102 Main St",
+            is_active=True,
+        )
+
+        writer = DbIngestionWriter(dry_run=False)
+        record = {
+            "source": "EATERIES",
+            "name": "Noodle House Manhattan NYC",
+            "zip_code": "10001",
+            "street": "100 Main St",
+            "borough": "Manhattan",
+        }
+        with patch.object(writer, "_find_restaurant_by_source_link", return_value=None), patch(
+            "nomz.ingestion.persistence.resolve_restaurant",
+            return_value=({"id": str(r1.id)}, 0.91, "fuzzy_name_zip"),
+        ), patch.object(writer, "_apply_restaurant_enrichment") as enrich, patch.object(
+            writer, "_sync_restaurant_search"
+        ) as sync:
+            got = writer._resolve_restaurant(record)
+
+        assert got.id == r1.id
+        enrich.assert_called_once()
+        sync.assert_called_once()
 
     def test_upsert_source_link_existing_record_updates_fields_and_stats(self):
         writer = DbIngestionWriter(dry_run=False)
