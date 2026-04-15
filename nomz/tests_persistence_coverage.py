@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 from django.db import IntegrityError, OperationalError
-from django.test import SimpleTestCase, TestCase
+from django.test import TestCase
 
 from nomz.ingestion.persistence import (
     DbIngestionWriter,
@@ -156,10 +156,14 @@ class PersistenceCoverageTests(TestCase):
             "street": "100 Main St",
             "borough": "Manhattan",
         }
-        with patch.object(writer, "_find_restaurant_by_source_link", return_value=None), patch(
+        with patch.object(
+            writer, "_find_restaurant_by_source_link", return_value=None
+        ), patch(
             "nomz.ingestion.persistence.resolve_restaurant",
             return_value=({"id": str(r1.id)}, 0.91, "fuzzy_name_zip"),
-        ), patch.object(writer, "_apply_restaurant_enrichment") as enrich, patch.object(
+        ), patch.object(
+            writer, "_apply_restaurant_enrichment"
+        ) as enrich, patch.object(
             writer, "_sync_restaurant_search"
         ) as sync:
             got = writer._resolve_restaurant(record)
@@ -199,7 +203,9 @@ class PersistenceCoverageTests(TestCase):
         existing.save.assert_called_once()
         assert writer.stats.records_updated == 1
 
-    def test_upsert_dining_out_profile_missing_optional_fields_and_integrity_error(self):
+    def test_upsert_dining_out_profile_missing_optional_fields_and_integrity_error(
+        self,
+    ):
         writer = DbIngestionWriter(dry_run=False)
         restaurant = MagicMock()
         restaurant.id = 999
@@ -293,6 +299,12 @@ class IngestionRunContextCoverageTests(TestCase):
                 result = ctx.__exit__(None, None, None)
                 assert result is False
 
-            logged_messages = [call.args[0] for call in mock_logger.exception.call_args_list]
-            assert any("Failed to persist ingestion run summary" in m for m in logged_messages)
-            assert any("Failed to close ingestion run context" in m for m in logged_messages)
+            logged_messages = [
+                call.args[0] for call in mock_logger.exception.call_args_list
+            ]
+            assert any(
+                "Failed to persist ingestion run summary" in m for m in logged_messages
+            )
+            assert any(
+                "Failed to close ingestion run context" in m for m in logged_messages
+            )

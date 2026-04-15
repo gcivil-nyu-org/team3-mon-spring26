@@ -422,7 +422,9 @@ class IngestionPersistenceTests(TestCase):
 class InspectionKeyNormalizationUnitTests(SimpleTestCase):
     def test_normalize_inspection_key_uses_inspection_key_when_present(self):
         row = {"inspection_key": "explicit-key"}
-        self.assertEqual(_normalize_inspection_key(row, restaurant_id=123), "explicit-key")
+        self.assertEqual(
+            _normalize_inspection_key(row, restaurant_id=123), "explicit-key"
+        )
 
     def test_normalize_inspection_key_hashes_fallback_fields(self):
         row = {
@@ -476,7 +478,9 @@ class PersistenceResolveRestaurantGapUnitTests(SimpleTestCase):
         def __iter__(self):
             return iter(self._rows)
 
-    def test_resolve_restaurant_dry_run_returns_unsaved_restaurant_and_counts_create(self):
+    def test_resolve_restaurant_dry_run_returns_unsaved_restaurant_and_counts_create(
+        self,
+    ):
         writer = DbIngestionWriter(dry_run=True)
         record = {
             "source": "EATERIES",
@@ -491,7 +495,8 @@ class PersistenceResolveRestaurantGapUnitTests(SimpleTestCase):
         with patch.object(
             writer, "_find_restaurant_by_source_link", return_value=None
         ), patch(
-            "nomz.ingestion.persistence.resolve_restaurant", return_value=(None, 0.2, "none")
+            "nomz.ingestion.persistence.resolve_restaurant",
+            return_value=(None, 0.2, "none"),
         ), patch(
             "nomz.ingestion.persistence.Restaurant.objects.filter",
             return_value=self._QS(exists_value=False, rows=[]),
@@ -501,7 +506,9 @@ class PersistenceResolveRestaurantGapUnitTests(SimpleTestCase):
         self.assertIsNotNone(restaurant)
         self.assertEqual(writer.stats.records_created, 1)
         self.assertEqual(getattr(restaurant, "name", None), "Dry Run Spot")
-        self.assertEqual(getattr(restaurant, "name_normalized", None), normalize_text("Dry Run Spot"))
+        self.assertEqual(
+            getattr(restaurant, "name_normalized", None), normalize_text("Dry Run Spot")
+        )
 
     def test_resolve_restaurant_integrity_error_recovers_existing_and_enriches(self):
         """
@@ -532,13 +539,16 @@ class PersistenceResolveRestaurantGapUnitTests(SimpleTestCase):
                 if not hasattr(filter_side_effect, "calls"):
                     filter_side_effect.calls = 0
                 filter_side_effect.calls += 1
-                return qs_name_none if filter_side_effect.calls == 1 else qs_name_existing
+                return (
+                    qs_name_none if filter_side_effect.calls == 1 else qs_name_existing
+                )
             return self._QS()
 
         with patch.object(
             writer, "_find_restaurant_by_source_link", return_value=None
         ), patch(
-            "nomz.ingestion.persistence.resolve_restaurant", return_value=(None, 0.0, "none")
+            "nomz.ingestion.persistence.resolve_restaurant",
+            return_value=(None, 0.0, "none"),
         ), patch(
             "nomz.ingestion.persistence.Restaurant.objects.filter",
             side_effect=filter_side_effect,
@@ -596,7 +606,9 @@ class FetchNycSourcesCommandTests(SimpleTestCase):
             self.assertIn(f"Saved records to {output_path}", out)
             self.assertIn("Ingestion finished | total=2 failures=1", out)
             self.assertIn("Source errors:", out)
-            self.assertIn("Tip: skip this source for now with --skip-source EATERIES.", out)
+            self.assertIn(
+                "Tip: skip this source for now with --skip-source EATERIES.", out
+            )
             self.assertIn("Dry-run mode: no database writes were committed.", out)
             self.assertIn('"name": "Alpha"', out)
             self.assertIn('"name": "Beta"', out)

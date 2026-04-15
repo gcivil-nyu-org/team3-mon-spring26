@@ -1,4 +1,3 @@
-from django.contrib import messages
 from django.contrib.admin.sites import AdminSite
 from django.contrib.auth.models import User
 from django.contrib.messages import get_messages

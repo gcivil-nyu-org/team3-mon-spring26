@@ -545,7 +545,9 @@ class SpaAuthCoverageGapTests(TestCase):
     def test_auth_admin_login_requires_all_fields(self):
         response = self.client.post(
             reverse("api_auth_admin_login"),
-            data=json.dumps({"username": "admin", "password": "x", "security_code": ""}),
+            data=json.dumps(
+                {"username": "admin", "password": "x", "security_code": ""}
+            ),
             content_type="application/json",
         )
         self.assertEqual(response.status_code, 400)
@@ -650,7 +652,9 @@ class SpaAuthCoverageGapTests(TestCase):
         self.assertEqual(response.json()["error"], "Invalid session.")
 
     @patch("nomz.spa_api.match_token")
-    def test_auth_2fa_verify_success_clears_pending_and_authenticates(self, mock_match_token):
+    def test_auth_2fa_verify_success_clears_pending_and_authenticates(
+        self, mock_match_token
+    ):
         session = self.client.session
         session["_2fa_user_id"] = self.user.id
         session.save()

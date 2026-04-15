@@ -22,11 +22,12 @@ from nomz.models import (
     UserProfile,
 )
 
-
 pytestmark = pytest.mark.django_db
 
 
-def _create_user(username: str, password: str = "pass12345", role: str = "diner", **kwargs):
+def _create_user(
+    username: str, password: str = "pass12345", role: str = "diner", **kwargs
+):
     user = User.objects.create_user(username=username, password=password, **kwargs)
     UserProfile.objects.create(user=user, role=role)
     return user
@@ -76,7 +77,12 @@ def test_auth_password_reset_confirm_error_and_form_invalid_paths():
     missing_uid_token = client.post(
         "/api/auth/password-reset/confirm/",
         data=json.dumps(
-            {"uid": "", "token": "", "new_password1": "abc123XYZ!", "new_password2": "abc123XYZ!"}
+            {
+                "uid": "",
+                "token": "",
+                "new_password1": "abc123XYZ!",
+                "new_password2": "abc123XYZ!",
+            }
         ),
         content_type="application/json",
     )
@@ -85,7 +91,9 @@ def test_auth_password_reset_confirm_error_and_form_invalid_paths():
 
     missing_passwords = client.post(
         "/api/auth/password-reset/confirm/",
-        data=json.dumps({"uid": "abc", "token": "tok", "new_password1": "", "new_password2": ""}),
+        data=json.dumps(
+            {"uid": "abc", "token": "tok", "new_password1": "", "new_password2": ""}
+        ),
         content_type="application/json",
     )
     assert missing_passwords.status_code == 400
@@ -94,7 +102,12 @@ def test_auth_password_reset_confirm_error_and_form_invalid_paths():
     invalid_uid = client.post(
         "/api/auth/password-reset/confirm/",
         data=json.dumps(
-            {"uid": "%%%invalid%%%", "token": "tok", "new_password1": "abc123XYZ!", "new_password2": "abc123XYZ!"}
+            {
+                "uid": "%%%invalid%%%",
+                "token": "tok",
+                "new_password1": "abc123XYZ!",
+                "new_password2": "abc123XYZ!",
+            }
         ),
         content_type="application/json",
     )
@@ -172,12 +185,20 @@ def test_admin_recalculate_scores_filtering_branches_and_success():
     UserProfile.objects.create(user=staff, role="diner")
     client.force_login(staff)
 
-    r1 = Restaurant.objects.create(name="Recalc Alpha", cuisine_type="other", price_range="$$")
-    r2 = Restaurant.objects.create(name="Recalc Beta", cuisine_type="other", price_range="$$")
+    r1 = Restaurant.objects.create(
+        name="Recalc Alpha", cuisine_type="other", price_range="$$"
+    )
+    r2 = Restaurant.objects.create(
+        name="Recalc Beta", cuisine_type="other", price_range="$$"
+    )
     Restaurant.objects.create(name="Twin Match", cuisine_type="other", price_range="$$")
     Restaurant.objects.create(name="twin match", cuisine_type="other", price_range="$$")
-    Restaurant.objects.create(name="Partial A Item", cuisine_type="other", price_range="$$")
-    Restaurant.objects.create(name="Partial B Item", cuisine_type="other", price_range="$$")
+    Restaurant.objects.create(
+        name="Partial A Item", cuisine_type="other", price_range="$$"
+    )
+    Restaurant.objects.create(
+        name="Partial B Item", cuisine_type="other", price_range="$$"
+    )
 
     invalid_json = client.post(
         "/api/admin/recalculate-scores/",
@@ -225,7 +246,12 @@ def test_admin_recalculate_scores_filtering_branches_and_success():
         content_type="application/json",
     )
     assert zero_total.status_code == 200
-    assert zero_total.json() == {"success": True, "updated": 0, "anomaly_count": 0, "total": 0}
+    assert zero_total.json() == {
+        "success": True,
+        "updated": 0,
+        "anomaly_count": 0,
+        "total": 0,
+    }
 
     with patch(
         "nomz.spa_api.refresh_restaurant_composite",
@@ -267,8 +293,12 @@ def test_admin_moderation_data_permission_and_payload_rows():
     assert denied.status_code == 403
     assert denied.json()["error"] == "Staff access required."
 
-    restaurant = Restaurant.objects.create(name="Moderation Data Spot", cuisine_type="other", price_range="$$")
-    review = Review.objects.create(restaurant=restaurant, user=reporter, rating=2, comment="flag me")
+    restaurant = Restaurant.objects.create(
+        name="Moderation Data Spot", cuisine_type="other", price_range="$$"
+    )
+    review = Review.objects.create(
+        restaurant=restaurant, user=reporter, rating=2, comment="flag me"
+    )
     ModerationReport.objects.create(
         reporter=reporter,
         review=review,
@@ -452,12 +482,17 @@ def test_diner_recommendations_permission_and_preference_branches():
         price_preference="$$",
     )
     client.force_login(diner_with_prefs)
-    with patch("nomz.spa_api.recommend_restaurants_for_user", return_value=[]) as mock_recommend:
+    with patch(
+        "nomz.spa_api.recommend_restaurants_for_user", return_value=[]
+    ) as mock_recommend:
         no_match = client.get("/api/recommendations/")
         assert no_match.status_code == 200
         payload = no_match.json()
         assert payload["requires_preferences"] is False
-        assert "No restaurants currently match your saved preferences" in payload["message"]
+        assert (
+            "No restaurants currently match your saved preferences"
+            in payload["message"]
+        )
         assert payload["restaurants"] == []
         assert mock_recommend.called
 
@@ -522,7 +557,9 @@ def test_friends_chat_list_api_get_and_post_branch_conditions():
         is_group=False,
     )
     convo.participants.add(user, other)
-    FriendMessage.objects.create(conversation=convo, sender=other, body="hello", is_read=False)
+    FriendMessage.objects.create(
+        conversation=convo, sender=other, body="hello", is_read=False
+    )
 
     client.force_login(user)
     listing = client.get("/api/friends-chat/")

@@ -20,7 +20,9 @@ class SpaShellViewsTests(TestCase):
     def test_load_index_bytes_embedded_fallback_when_no_index_exists(self):
         req = self.factory.get("/?next=/dashboard")
         req.user = SimpleNamespace(is_authenticated=False)
-        with self.settings(FRONTEND_DIST_DIR=Path(settings.BASE_DIR) / "does-not-exist-xyz"):
+        with self.settings(
+            FRONTEND_DIST_DIR=Path(settings.BASE_DIR) / "does-not-exist-xyz"
+        ):
             data = spa_shell_views._load_index_bytes()
         self.assertIn(b"Frontend bundle not found", data)
 
@@ -42,7 +44,9 @@ class SpaShellViewsTests(TestCase):
     def test_spa_index_returns_503_when_build_missing_in_non_debug(self):
         req = self.factory.get("/?next=/signin")
         req.user = SimpleNamespace(is_authenticated=False)
-        with self.settings(FRONTEND_DIST_DIR=Path(settings.BASE_DIR) / "missing-spa-dist"):
+        with self.settings(
+            FRONTEND_DIST_DIR=Path(settings.BASE_DIR) / "missing-spa-dist"
+        ):
             response = spa_shell_views.spa_index(req)
         self.assertEqual(response.status_code, 503)
         self.assertIn("Nomz UI build missing", response.content.decode("utf-8"))

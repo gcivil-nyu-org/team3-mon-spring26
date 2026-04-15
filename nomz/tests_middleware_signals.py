@@ -90,7 +90,9 @@ class MiddlewareCoverageTests(TestCase):
         )
         self.assertEqual(first.status_code, 503)
 
-        health_audit = SystemAuditLog.objects.filter(action="health_check_failure").first()
+        health_audit = SystemAuditLog.objects.filter(
+            action="health_check_failure"
+        ).first()
         self.assertIsNotNone(health_audit)
         self.assertEqual(health_audit.metadata.get("status_code"), 503)
         self.assertEqual(health_audit.request_path, "/health/")
@@ -211,12 +213,14 @@ class SignalsCoverageTests(TestCase):
         request.META["REMOTE_ADDR"] = "203.0.113.20"
         request.META["HTTP_USER_AGENT"] = "ua-test"
 
-        result = authenticate(request=request, username="signals_user", password="wrong")
+        result = authenticate(
+            request=request, username="signals_user", password="wrong"
+        )
         self.assertIsNone(result)
 
-        latest = LoginLog.objects.filter(username="signals_user", status="Failure").latest(
-            "timestamp"
-        )
+        latest = LoginLog.objects.filter(
+            username="signals_user", status="Failure"
+        ).latest("timestamp")
         self.assertTrue(latest.is_user_suspicious)
         self.assertTrue(latest.is_suspicious)
         self.assertEqual(latest.ip_address, "203.0.113.20")
@@ -263,9 +267,7 @@ class SignalsCoverageTests(TestCase):
             user_interacted=False,
         )
 
-        with patch(
-            "nomz.signals.refresh_restaurant_composite", return_value={}
-        ), patch(
+        with patch("nomz.signals.refresh_restaurant_composite", return_value={}), patch(
             "nomz.models.RecalculatedRecommendation.calculate_accuracy_from_interactions",
             return_value=None,
         ):

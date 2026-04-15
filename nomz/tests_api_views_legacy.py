@@ -7,7 +7,6 @@ from rest_framework.test import APIClient
 
 from nomz.models import Restaurant, UserProfile
 
-
 pytestmark = pytest.mark.django_db
 
 
@@ -63,7 +62,9 @@ def test_restaurant_claim_post_large_ids_list_and_empty_list_validation():
     # Explicit empty list input to trigger required/invalid selection path.
     empty_list_response = client.post(
         "/api/restaurant-claim/",
-        data=json.dumps({"restaurant_id": [], "business_email": "", "proof_details": ""}),
+        data=json.dumps(
+            {"restaurant_id": [], "business_email": "", "proof_details": ""}
+        ),
         content_type="application/json",
     )
     assert empty_list_response.status_code == 400

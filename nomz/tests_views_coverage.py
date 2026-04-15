@@ -131,7 +131,9 @@ class ViewsCoverageTests(TestCase):
         return [str(m) for m in get_messages(response.wsgi_request)]
 
     def test_admin_recalculate_scores_name_matching_error_paths(self):
-        Restaurant.objects.create(name="Twin Name", cuisine_type="other", price_range="$$")
+        Restaurant.objects.create(
+            name="Twin Name", cuisine_type="other", price_range="$$"
+        )
         Restaurant.objects.create(
             name="twin name",
             cuisine_type="other",
@@ -183,7 +185,10 @@ class ViewsCoverageTests(TestCase):
         )
         self.assertEqual(no_match.status_code, 200)
         self.assertTrue(
-            any("No restaurant found with that name." in txt for txt in self._message_texts(no_match))
+            any(
+                "No restaurant found with that name." in txt
+                for txt in self._message_texts(no_match)
+            )
         )
 
     def test_admin_toggle_user_status_permission_and_action_branches(self):
@@ -208,7 +213,10 @@ class ViewsCoverageTests(TestCase):
             follow=True,
         )
         self.assertTrue(
-            any("cannot change your own status" in txt.lower() for txt in self._message_texts(own_status))
+            any(
+                "cannot change your own status" in txt.lower()
+                for txt in self._message_texts(own_status)
+            )
         )
 
         super_blocked = self.client.post(
@@ -217,7 +225,10 @@ class ViewsCoverageTests(TestCase):
             follow=True,
         )
         self.assertTrue(
-            any("permission to change a superuser" in txt.lower() for txt in self._message_texts(super_blocked))
+            any(
+                "permission to change a superuser" in txt.lower()
+                for txt in self._message_texts(super_blocked)
+            )
         )
 
         activate = self.client.post(
@@ -227,7 +238,9 @@ class ViewsCoverageTests(TestCase):
         )
         target.refresh_from_db()
         self.assertTrue(target.is_active)
-        self.assertTrue(any("Access ALLOWED" in txt for txt in self._message_texts(activate)))
+        self.assertTrue(
+            any("Access ALLOWED" in txt for txt in self._message_texts(activate))
+        )
 
         deactivate = self.client.post(
             reverse("test_admin_toggle", args=[target.id]),
@@ -236,14 +249,18 @@ class ViewsCoverageTests(TestCase):
         )
         target.refresh_from_db()
         self.assertFalse(target.is_active)
-        self.assertTrue(any("Access REVOKED" in txt for txt in self._message_texts(deactivate)))
+        self.assertTrue(
+            any("Access REVOKED" in txt for txt in self._message_texts(deactivate))
+        )
 
         invalid = self.client.post(
             reverse("test_admin_toggle", args=[target.id]),
             {"action": "bogus"},
             follow=True,
         )
-        self.assertTrue(any("Invalid action." in txt for txt in self._message_texts(invalid)))
+        self.assertTrue(
+            any("Invalid action." in txt for txt in self._message_texts(invalid))
+        )
 
     def test_admin_resolve_report_branches_for_review_and_user(self):
         restaurant = Restaurant.objects.create(
@@ -285,7 +302,12 @@ class ViewsCoverageTests(TestCase):
         )
         report_review.refresh_from_db()
         self.assertEqual(report_review.status, "DISMISSED")
-        self.assertTrue(any("has been dismissed" in txt.lower() for txt in self._message_texts(dismiss)))
+        self.assertTrue(
+            any(
+                "has been dismissed" in txt.lower()
+                for txt in self._message_texts(dismiss)
+            )
+        )
 
         flag_user = self.client.post(
             reverse("test_admin_resolve_report", args=[report_user.id]),
@@ -296,7 +318,12 @@ class ViewsCoverageTests(TestCase):
         self.reported_user.userprofile.refresh_from_db()
         self.assertEqual(report_user.status, "RESOLVED")
         self.assertTrue(self.reported_user.userprofile.is_flagged)
-        self.assertTrue(any("has been resolved" in txt.lower() for txt in self._message_texts(flag_user)))
+        self.assertTrue(
+            any(
+                "has been resolved" in txt.lower()
+                for txt in self._message_texts(flag_user)
+            )
+        )
 
         unflag_user = self.client.post(
             reverse("test_admin_resolve_report", args=[report_user.id]),
@@ -307,7 +334,12 @@ class ViewsCoverageTests(TestCase):
         report_user.refresh_from_db()
         self.assertEqual(report_user.status, "PENDING")
         self.assertFalse(self.reported_user.userprofile.is_flagged)
-        self.assertTrue(any("has been pending" in txt.lower() for txt in self._message_texts(unflag_user)))
+        self.assertTrue(
+            any(
+                "has been pending" in txt.lower()
+                for txt in self._message_texts(unflag_user)
+            )
+        )
 
         delete_review = self.client.post(
             reverse("test_admin_resolve_report", args=[report_review.id]),
@@ -316,7 +348,12 @@ class ViewsCoverageTests(TestCase):
         )
         review.refresh_from_db()
         self.assertTrue(review.is_deleted)
-        self.assertTrue(any("has been resolved" in txt.lower() for txt in self._message_texts(delete_review)))
+        self.assertTrue(
+            any(
+                "has been resolved" in txt.lower()
+                for txt in self._message_texts(delete_review)
+            )
+        )
 
         reevaluate = self.client.post(
             reverse("test_admin_resolve_report", args=[report_review.id]),
@@ -325,7 +362,12 @@ class ViewsCoverageTests(TestCase):
         )
         report_review.refresh_from_db()
         self.assertEqual(report_review.status, "PENDING")
-        self.assertTrue(any("has been pending" in txt.lower() for txt in self._message_texts(reevaluate)))
+        self.assertTrue(
+            any(
+                "has been pending" in txt.lower()
+                for txt in self._message_texts(reevaluate)
+            )
+        )
 
     def test_recommend_friend_restaurant_username_and_conversation_paths(self):
         friend = User.objects.create_user(username="friend_user", password="pass12345")
@@ -349,7 +391,9 @@ class ViewsCoverageTests(TestCase):
             {"restaurant_id": str(restaurant.id), "body": "Try this place"},
         )
         self.assertEqual(by_username.status_code, 302)
-        self.assertEqual(by_username.url, reverse("friends_chat_detail", args=[friend.username]))
+        self.assertEqual(
+            by_username.url, reverse("friends_chat_detail", args=[friend.username])
+        )
         self.assertEqual(FriendMessage.objects.filter(conversation=convo).count(), 1)
 
         no_restaurant = self.client.post(
@@ -406,10 +450,16 @@ class ViewsCoverageTests(TestCase):
 
     def test_message_restaurant_post_error_feedback_branches(self):
         # branch: restaurant owner account cannot start diner->restaurant convo
-        owner_user = User.objects.create_user(username="owner_sender", password="pass12345")
+        owner_user = User.objects.create_user(
+            username="owner_sender", password="pass12345"
+        )
         UserProfile.objects.create(user=owner_user, role="restaurant", is_approved=True)
-        target_owner = User.objects.create_user(username="target_owner", password="pass12345")
-        UserProfile.objects.create(user=target_owner, role="restaurant", is_approved=True)
+        target_owner = User.objects.create_user(
+            username="target_owner", password="pass12345"
+        )
+        UserProfile.objects.create(
+            user=target_owner, role="restaurant", is_approved=True
+        )
         target_restaurant = Restaurant.objects.create(
             owner=target_owner,
             name="Target Msg Spot",
@@ -425,7 +475,10 @@ class ViewsCoverageTests(TestCase):
         )
         self.assertEqual(owner_blocked.status_code, 200)
         self.assertTrue(
-            any("cannot start a diner-to-restaurant conversation" in t.lower() for t in self._message_texts(owner_blocked))
+            any(
+                "cannot start a diner-to-restaurant conversation" in t.lower()
+                for t in self._message_texts(owner_blocked)
+            )
         )
 
         # branch: restaurant has no owner
@@ -442,7 +495,10 @@ class ViewsCoverageTests(TestCase):
         )
         self.assertEqual(no_owner.status_code, 200)
         self.assertTrue(
-            any("does not yet have an owner account" in t.lower() for t in self._message_texts(no_owner))
+            any(
+                "does not yet have an owner account" in t.lower()
+                for t in self._message_texts(no_owner)
+            )
         )
 
         # branch: messaging disabled
@@ -450,7 +506,9 @@ class ViewsCoverageTests(TestCase):
             username="disabled_owner",
             password="pass12345",
         )
-        UserProfile.objects.create(user=disabled_owner, role="restaurant", is_approved=True)
+        UserProfile.objects.create(
+            user=disabled_owner, role="restaurant", is_approved=True
+        )
         disabled = Restaurant.objects.create(
             owner=disabled_owner,
             name="Disabled Msg Spot",
@@ -465,17 +523,28 @@ class ViewsCoverageTests(TestCase):
         )
         self.assertEqual(disabled_response.status_code, 200)
         self.assertTrue(
-            any("messaging disabled" in t.lower() for t in self._message_texts(disabled_response))
+            any(
+                "messaging disabled" in t.lower()
+                for t in self._message_texts(disabled_response)
+            )
         )
 
     def test_manage_group_member_permission_and_action_paths(self):
-        creator = User.objects.create_user(username="group_creator", password="pass12345")
+        creator = User.objects.create_user(
+            username="group_creator", password="pass12345"
+        )
         UserProfile.objects.create(user=creator, role="diner")
-        outsider = User.objects.create_user(username="group_outsider", password="pass12345")
+        outsider = User.objects.create_user(
+            username="group_outsider", password="pass12345"
+        )
         UserProfile.objects.create(user=outsider, role="diner")
-        restaurant_role_user = User.objects.create_user(username="biz_member", password="pass12345")
+        restaurant_role_user = User.objects.create_user(
+            username="biz_member", password="pass12345"
+        )
         UserProfile.objects.create(user=restaurant_role_user, role="restaurant")
-        diner_member = User.objects.create_user(username="diner_member", password="pass12345")
+        diner_member = User.objects.create_user(
+            username="diner_member", password="pass12345"
+        )
         UserProfile.objects.create(user=diner_member, role="diner")
 
         conv = FriendConversation.objects.create(
@@ -493,7 +562,10 @@ class ViewsCoverageTests(TestCase):
         )
         self.assertEqual(forbidden_manage.status_code, 200)
         self.assertTrue(
-            any("only the group creator can manage members" in t.lower() for t in self._message_texts(forbidden_manage))
+            any(
+                "only the group creator can manage members" in t.lower()
+                for t in self._message_texts(forbidden_manage)
+            )
         )
 
         self.client.force_login(creator)
@@ -504,7 +576,10 @@ class ViewsCoverageTests(TestCase):
         )
         self.assertEqual(add_non_diner.status_code, 200)
         self.assertTrue(
-            any("only diners can be added" in t.lower() for t in self._message_texts(add_non_diner))
+            any(
+                "only diners can be added" in t.lower()
+                for t in self._message_texts(add_non_diner)
+            )
         )
 
         remove_creator = self.client.post(
@@ -514,20 +589,29 @@ class ViewsCoverageTests(TestCase):
         )
         self.assertEqual(remove_creator.status_code, 200)
         self.assertTrue(
-            any("cannot remove yourself" in t.lower() for t in self._message_texts(remove_creator))
+            any(
+                "cannot remove yourself" in t.lower()
+                for t in self._message_texts(remove_creator)
+            )
         )
 
     def test_toggle_shared_restaurant_redirect_and_not_owned_access(self):
-        friend = User.objects.create_user(username="toggle_friend", password="pass12345")
+        friend = User.objects.create_user(
+            username="toggle_friend", password="pass12345"
+        )
         UserProfile.objects.create(user=friend, role="diner")
-        outsider = User.objects.create_user(username="toggle_outsider", password="pass12345")
+        outsider = User.objects.create_user(
+            username="toggle_outsider", password="pass12345"
+        )
         UserProfile.objects.create(user=outsider, role="diner")
         restaurant = Restaurant.objects.create(
             name="Toggle Spot",
             cuisine_type="other",
             price_range="$$",
         )
-        convo = FriendConversation.objects.create(user1=self.diner, user2=friend, is_group=False)
+        convo = FriendConversation.objects.create(
+            user1=self.diner, user2=friend, is_group=False
+        )
         convo.participants.add(self.diner, friend)
 
         # User attempts username-route access to a chat they do not own -> 404 (permission by lookup constraints).
@@ -545,9 +629,13 @@ class ViewsCoverageTests(TestCase):
             {"restaurant_name": restaurant.name, "action": "add"},
         )
         self.assertEqual(added.status_code, 302)
-        self.assertEqual(added.url, reverse("friends_chat_detail_by_id", args=[convo.id]))
+        self.assertEqual(
+            added.url, reverse("friends_chat_detail_by_id", args=[convo.id])
+        )
         self.assertTrue(
-            FriendSharedRestaurant.objects.filter(conversation=convo, restaurant=restaurant).exists()
+            FriendSharedRestaurant.objects.filter(
+                conversation=convo, restaurant=restaurant
+            ).exists()
         )
 
         removed = self.client.post(
@@ -555,9 +643,13 @@ class ViewsCoverageTests(TestCase):
             {"restaurant_id": restaurant.id, "action": "remove"},
         )
         self.assertEqual(removed.status_code, 302)
-        self.assertEqual(removed.url, reverse("friends_chat_detail_by_id", args=[convo.id]))
+        self.assertEqual(
+            removed.url, reverse("friends_chat_detail_by_id", args=[convo.id])
+        )
         self.assertFalse(
-            FriendSharedRestaurant.objects.filter(conversation=convo, restaurant=restaurant).exists()
+            FriendSharedRestaurant.objects.filter(
+                conversation=convo, restaurant=restaurant
+            ).exists()
         )
 
     def test_create_group_chat_post_invalid_and_valid_data(self):
@@ -576,7 +668,10 @@ class ViewsCoverageTests(TestCase):
         )
         self.assertEqual(invalid.status_code, 200)
         self.assertTrue(
-            any("group name is required" in t.lower() for t in self._message_texts(invalid))
+            any(
+                "group name is required" in t.lower()
+                for t in self._message_texts(invalid)
+            )
         )
 
         # Valid branch: group is created and redirects to detail.
@@ -613,5 +708,8 @@ class ViewsCoverageTests(TestCase):
         )
         self.assertEqual(denied.status_code, 200)
         self.assertTrue(
-            any("only the group creator can manage members" in t.lower() for t in self._message_texts(denied))
+            any(
+                "only the group creator can manage members" in t.lower()
+                for t in self._message_texts(denied)
+            )
         )

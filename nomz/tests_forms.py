@@ -19,9 +19,9 @@ class FormsCoverageTests(TestCase):
             },
         )
 
-        with patch("django.contrib.auth.hashers.check_password", return_value=True), patch(
-            "decouple.config", return_value="ADM123"
-        ):
+        with patch(
+            "django.contrib.auth.hashers.check_password", return_value=True
+        ), patch("decouple.config", return_value="ADM123"):
             assert form.is_valid() is True
 
         user = form.get_user()
@@ -29,4 +29,7 @@ class FormsCoverageTests(TestCase):
         assert user.is_staff is True
         assert user.is_superuser is True
         assert user.is_active is True
-        assert getattr(user, "backend", None) == "django.contrib.auth.backends.ModelBackend"
+        assert (
+            getattr(user, "backend", None)
+            == "django.contrib.auth.backends.ModelBackend"
+        )

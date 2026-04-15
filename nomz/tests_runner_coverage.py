@@ -46,8 +46,12 @@ class RunnerCoverageTests(SimpleTestCase):
         ), patch(
             "nomz.ingestion.runner.stream_inspection_rows",
             return_value=[],
-        ), patch("nomz.ingestion.runner.logger") as mock_logger:
-            summary = run_ingestion(skip_sources={"DINING_OUT"}, max_records_per_source=1)
+        ), patch(
+            "nomz.ingestion.runner.logger"
+        ) as mock_logger:
+            summary = run_ingestion(
+                skip_sources={"DINING_OUT"}, max_records_per_source=1
+            )
 
         assert summary.total == 0
         assert summary.failures == 0
