@@ -7,6 +7,7 @@ from django.urls import path, reverse
 from nomz.models import (
     FriendConversation,
     FriendMessage,
+    FriendSharedRestaurant,
     ModerationReport,
     Restaurant,
     Review,
@@ -16,8 +17,11 @@ from nomz.views import (
     admin_recalculate_scores,
     admin_resolve_report,
     admin_toggle_user_status,
+    manage_group_member,
+    message_restaurant,
     recommend_friend_restaurant,
     respond_to_review,
+    toggle_shared_restaurant,
 )
 
 
@@ -30,6 +34,12 @@ urlpatterns = [
     path("dashboard/", _ok_view, name="dashboard"),
     path("profile/", _ok_view, name="profile"),
     path("moderation/", _ok_view, name="admin_moderation_dashboard"),
+    path("restaurant/<int:restaurant_id>/", _ok_view, name="restaurant_detail"),
+    path(
+        "messages/conversations/<int:conversation_id>/",
+        _ok_view,
+        name="conversation_detail",
+    ),
     path("friends/<str:username>/", _ok_view, name="friends_chat_detail"),
     path(
         "friends/group/<int:conversation_id>/",
@@ -56,6 +66,26 @@ urlpatterns = [
         "test/friends/group/<int:conversation_id>/recommend/",
         recommend_friend_restaurant,
         name="test_recommend_friend_by_conversation",
+    ),
+    path(
+        "test/messages/restaurant/<int:restaurant_id>/",
+        message_restaurant,
+        name="test_message_restaurant",
+    ),
+    path(
+        "test/friends/group/<int:conversation_id>/manage/",
+        manage_group_member,
+        name="test_manage_group_member",
+    ),
+    path(
+        "test/friends/<str:username>/toggle-shared/",
+        toggle_shared_restaurant,
+        name="test_toggle_shared_by_username",
+    ),
+    path(
+        "test/friends/group/<int:conversation_id>/toggle-shared/",
+        toggle_shared_restaurant,
+        name="test_toggle_shared_by_conversation",
     ),
     path(
         "test/reviews/<int:review_id>/respond/",
@@ -365,4 +395,160 @@ class ViewsCoverageTests(TestCase):
                 "Could not save response" in txt
                 for txt in self._message_texts(response)
             )
+        )
+
+    def test_message_restaurant_post_error_feedback_branches(self):
+        # branch: restaurant owner account cannot start diner->restaurant convo
+        owner_user = User.objects.create_user(username="owner_sender", password="pass12345")
+        UserProfile.objects.create(user=owner_user, role="restaurant", is_approved=True)
+        target_owner = User.objects.create_user(username="target_owner", password="pass12345")
+        UserProfile.objects.create(user=target_owner, role="restaurant", is_approved=True)
+        target_restaurant = Restaurant.objects.create(
+            owner=target_owner,
+            name="Target Msg Spot",
+            cuisine_type="other",
+            price_range="$$",
+            messaging_enabled=True,
+        )
+        self.client.force_login(owner_user)
+        owner_blocked = self.client.post(
+            reverse("test_message_restaurant", args=[target_restaurant.id]),
+            {"message": ""},
+            follow=True,
+        )
+        self.assertEqual(owner_blocked.status_code, 200)
+        self.assertTrue(
+            any("cannot start a diner-to-restaurant conversation" in t.lower() for t in self._message_texts(owner_blocked))
+        )
+
+        # branch: restaurant has no owner
+        self.client.force_login(self.diner)
+        unowned = Restaurant.objects.create(
+            name="Unowned Spot",
+            cuisine_type="other",
+            price_range="$$",
+        )
+        no_owner = self.client.post(
+            reverse("test_message_restaurant", args=[unowned.id]),
+            {"message": "hello"},
+            follow=True,
+        )
+        self.assertEqual(no_owner.status_code, 200)
+        self.assertTrue(
+            any("does not yet have an owner account" in t.lower() for t in self._message_texts(no_owner))
+        )
+
+        # branch: messaging disabled
+        disabled_owner = User.objects.create_user(
+            username="disabled_owner",
+            password="pass12345",
+        )
+        UserProfile.objects.create(user=disabled_owner, role="restaurant", is_approved=True)
+        disabled = Restaurant.objects.create(
+            owner=disabled_owner,
+            name="Disabled Msg Spot",
+            cuisine_type="other",
+            price_range="$$",
+            messaging_enabled=False,
+        )
+        disabled_response = self.client.post(
+            reverse("test_message_restaurant", args=[disabled.id]),
+            {"message": "hello"},
+            follow=True,
+        )
+        self.assertEqual(disabled_response.status_code, 200)
+        self.assertTrue(
+            any("messaging disabled" in t.lower() for t in self._message_texts(disabled_response))
+        )
+
+    def test_manage_group_member_permission_and_action_paths(self):
+        creator = User.objects.create_user(username="group_creator", password="pass12345")
+        UserProfile.objects.create(user=creator, role="diner")
+        outsider = User.objects.create_user(username="group_outsider", password="pass12345")
+        UserProfile.objects.create(user=outsider, role="diner")
+        restaurant_role_user = User.objects.create_user(username="biz_member", password="pass12345")
+        UserProfile.objects.create(user=restaurant_role_user, role="restaurant")
+        diner_member = User.objects.create_user(username="diner_member", password="pass12345")
+        UserProfile.objects.create(user=diner_member, role="diner")
+
+        conv = FriendConversation.objects.create(
+            name="Coverage Group",
+            is_group=True,
+            creator=creator,
+        )
+        conv.participants.add(creator)
+
+        self.client.force_login(outsider)
+        forbidden_manage = self.client.post(
+            reverse("test_manage_group_member", args=[conv.id]),
+            {"action": "add", "user_id": diner_member.id},
+            follow=True,
+        )
+        self.assertEqual(forbidden_manage.status_code, 200)
+        self.assertTrue(
+            any("only the group creator can manage members" in t.lower() for t in self._message_texts(forbidden_manage))
+        )
+
+        self.client.force_login(creator)
+        add_non_diner = self.client.post(
+            reverse("test_manage_group_member", args=[conv.id]),
+            {"action": "add", "user_id": restaurant_role_user.id},
+            follow=True,
+        )
+        self.assertEqual(add_non_diner.status_code, 200)
+        self.assertTrue(
+            any("only diners can be added" in t.lower() for t in self._message_texts(add_non_diner))
+        )
+
+        remove_creator = self.client.post(
+            reverse("test_manage_group_member", args=[conv.id]),
+            {"action": "remove", "user_id": creator.id},
+            follow=True,
+        )
+        self.assertEqual(remove_creator.status_code, 200)
+        self.assertTrue(
+            any("cannot remove yourself" in t.lower() for t in self._message_texts(remove_creator))
+        )
+
+    def test_toggle_shared_restaurant_redirect_and_not_owned_access(self):
+        friend = User.objects.create_user(username="toggle_friend", password="pass12345")
+        UserProfile.objects.create(user=friend, role="diner")
+        outsider = User.objects.create_user(username="toggle_outsider", password="pass12345")
+        UserProfile.objects.create(user=outsider, role="diner")
+        restaurant = Restaurant.objects.create(
+            name="Toggle Spot",
+            cuisine_type="other",
+            price_range="$$",
+        )
+        convo = FriendConversation.objects.create(user1=self.diner, user2=friend, is_group=False)
+        convo.participants.add(self.diner, friend)
+
+        # User attempts username-route access to a chat they do not own -> 404 (permission by lookup constraints).
+        self.client.force_login(outsider)
+        not_owned = self.client.post(
+            reverse("test_toggle_shared_by_username", args=[friend.username]),
+            {"restaurant_name": restaurant.name, "action": "add"},
+        )
+        self.assertEqual(not_owned.status_code, 404)
+
+        # Owner of conversation can add/remove via conversation route and gets redirect response.
+        self.client.force_login(self.diner)
+        added = self.client.post(
+            reverse("test_toggle_shared_by_conversation", args=[convo.id]),
+            {"restaurant_name": restaurant.name, "action": "add"},
+        )
+        self.assertEqual(added.status_code, 302)
+        self.assertEqual(added.url, reverse("friends_chat_detail_by_id", args=[convo.id]))
+        self.assertTrue(
+            FriendSharedRestaurant.objects.filter(conversation=convo, restaurant=restaurant).exists()
+        )
+
+        removed = self.client.post(
+            reverse("test_toggle_shared_by_conversation", args=[convo.id]),
+            {"restaurant_id": restaurant.id, "action": "remove"},
+        )
+        self.assertEqual(removed.status_code, 302)
+        self.assertEqual(removed.url, reverse("friends_chat_detail_by_id", args=[convo.id]))
+        self.assertFalse(
+            FriendSharedRestaurant.objects.filter(conversation=convo, restaurant=restaurant).exists()
         )
