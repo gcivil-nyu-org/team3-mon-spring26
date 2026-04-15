@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import Counter
 from collections import defaultdict
 from dataclasses import dataclass
+import logging
 from typing import Callable, Dict, Optional
 
 from nomz.ingestion.sources.eateries_feed import stream_eateries_rows
@@ -11,6 +12,7 @@ from nomz.ingestion.sources.inspections_feed import stream_inspection_rows
 from nomz.ingestion.sources.socrata_client import SocrataClient, SocrataError
 
 RecordWriter = Callable[[Dict], None]
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -32,6 +34,12 @@ def run_ingestion(
     skip_sources: Optional[set[str]] = None,
     max_records_per_source: Optional[int] = None,
 ) -> IngestionSummary:
+    logger.info(
+        "Starting ingestion run (domain=%s, skip_sources=%s, max_records_per_source=%s)",
+        domain,
+        sorted(skip_sources) if skip_sources else [],
+        max_records_per_source,
+    )
     writer = writer or (lambda _record: None)
     skip_sources = skip_sources or set()
     client = SocrataClient(domain=domain, app_token=app_token)
@@ -107,6 +115,13 @@ def run_ingestion(
             for source_name, message in errors.items()
         }
 
-    return IngestionSummary(
+    summary = IngestionSummary(
         counts=dict(counts), total=total, failures=failures, errors=errors
     )
+    logger.info(
+        "Finished ingestion run (total=%s, failures=%s, counts=%s)",
+        summary.total,
+        summary.failures,
+        summary.counts,
+    )
+    return summary
