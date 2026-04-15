@@ -1,8 +1,10 @@
+import json
 from importlib import import_module
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
-from django.test import SimpleTestCase, TestCase
+from django.test import Client, SimpleTestCase, TestCase
+from django.urls import reverse
 from django.utils import timezone
 
 from .models import (
@@ -12,6 +14,7 @@ from .models import (
     Review,
     UserInteractionHistory,
     UserPreference,
+    UserProfile,
 )
 from .restaurant_sorting import (
     calculate_historical_satisfaction_for_restaurant,
@@ -448,3 +451,232 @@ class ScoringGapTests(SimpleTestCase):
         kinds = {a["type"] for a in anomalies}
         self.assertIn("low_confidence_high_score", kinds)
         self.assertIn("stale_inspection_high_score", kinds)
+
+
+class SpaAuthCoverageGapTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.password = "pass12345"
+        self.user = User.objects.create_user(
+            username="spa_auth_user",
+            email="spa_auth_user@example.com",
+            password=self.password,
+        )
+        UserProfile.objects.create(user=self.user, role="diner")
+
+    def test_auth_login_invalid_json_returns_error(self):
+        response = self.client.post(
+            reverse("api_auth_login"),
+            data="{not-json",
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["error"], "Invalid JSON.")
+
+    def test_auth_login_requires_username_and_password(self):
+        response = self.client.post(
+            reverse("api_auth_login"),
+            data=json.dumps({"username": "spa_auth_user", "password": ""}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("required", response.json()["error"])
+
+    @patch("nomz.spa_api.user_has_device", return_value=True)
+    def test_auth_login_sets_pending_2fa_when_device_exists(self, _mock_has_device):
+        response = self.client.post(
+            reverse("api_auth_login"),
+            data=json.dumps({"username": "spa_auth_user", "password": self.password}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["requires_2fa"])
+        self.assertFalse(payload["authenticated"])
+        self.assertEqual(self.client.session.get("_2fa_user_id"), self.user.id)
+
+    @patch("nomz.spa_api.user_has_device", return_value=False)
+    def test_auth_login_success_without_2fa_device(self, _mock_has_device):
+        response = self.client.post(
+            reverse("api_auth_login"),
+            data=json.dumps({"username": "spa_auth_user", "password": self.password}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["authenticated"])
+        self.assertEqual(payload["username"], "spa_auth_user")
+
+    def test_auth_login_invalid_credentials_returns_401(self):
+        response = self.client.post(
+            reverse("api_auth_login"),
+            data=json.dumps({"username": "spa_auth_user", "password": "bad-password"}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 401)
+        self.assertIn("username and password", response.json()["error"])
+
+    def test_auth_admin_login_returns_session_when_staff_already_authenticated(self):
+        staff = User.objects.create_user(
+            username="spa_staff",
+            password=self.password,
+            is_staff=True,
+            is_superuser=True,
+        )
+        self.client.force_login(staff)
+        response = self.client.post(
+            reverse("api_auth_admin_login"),
+            data=json.dumps({}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["authenticated"])
+        self.assertTrue(response.json()["is_staff"])
+
+    def test_auth_admin_login_invalid_json_returns_error(self):
+        response = self.client.post(
+            reverse("api_auth_admin_login"),
+            data="{bad-json",
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["error"], "Invalid JSON.")
+
+    def test_auth_admin_login_requires_all_fields(self):
+        response = self.client.post(
+            reverse("api_auth_admin_login"),
+            data=json.dumps({"username": "admin", "password": "x", "security_code": ""}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("required", response.json()["error"])
+
+    @patch.dict("os.environ", {"ADMIN_SECURITY_CODE": "ADM123"}, clear=False)
+    def test_auth_admin_login_invalid_credentials_path_returns_401(self):
+        response = self.client.post(
+            reverse("api_auth_admin_login"),
+            data=json.dumps(
+                {"username": "admin", "password": "wrong", "security_code": "ADM123"}
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 401)
+        self.assertIn("error", response.json())
+        self.assertIn("__all__", response.json()["errors"])
+
+    def test_auth_admin_login_field_error_returns_400_branch(self):
+        response = self.client.post(
+            reverse("api_auth_admin_login"),
+            data=json.dumps(
+                {
+                    "username": "admin",
+                    "password": "x",
+                    "security_code": "x" * 30,
+                }
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("security_code", response.json()["errors"])
+
+    @patch("nomz.spa_api.AdminLoginForm")
+    def test_auth_admin_login_success_logs_in_staff(self, mock_form_cls):
+        staff = User.objects.create_user(
+            username="patched_admin",
+            password=self.password,
+            is_staff=True,
+            is_superuser=True,
+        )
+        mock_form = mock_form_cls.return_value
+        mock_form.is_valid.return_value = True
+        mock_form.get_user.return_value = staff
+
+        response = self.client.post(
+            reverse("api_auth_admin_login"),
+            data=json.dumps(
+                {
+                    "username": "patched_admin",
+                    "password": self.password,
+                    "security_code": "ok",
+                }
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["authenticated"])
+        self.assertTrue(payload["is_staff"])
+
+    def test_auth_2fa_verify_invalid_json_returns_error(self):
+        response = self.client.post(
+            reverse("api_auth_2fa_verify"),
+            data="{invalid",
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["error"], "Invalid JSON.")
+
+    def test_auth_2fa_verify_requires_pending_session(self):
+        response = self.client.post(
+            reverse("api_auth_2fa_verify"),
+            data=json.dumps({"token": "123456"}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("No pending two-factor", response.json()["error"])
+
+    def test_auth_2fa_verify_requires_token(self):
+        session = self.client.session
+        session["_2fa_user_id"] = self.user.id
+        session.save()
+        response = self.client.post(
+            reverse("api_auth_2fa_verify"),
+            data=json.dumps({"token": ""}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("required", response.json()["error"])
+
+    def test_auth_2fa_verify_returns_invalid_session_for_missing_user(self):
+        session = self.client.session
+        session["_2fa_user_id"] = 999999
+        session.save()
+        response = self.client.post(
+            reverse("api_auth_2fa_verify"),
+            data=json.dumps({"token": "123456"}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["error"], "Invalid session.")
+
+    @patch("nomz.spa_api.match_token")
+    def test_auth_2fa_verify_success_clears_pending_and_authenticates(self, mock_match_token):
+        session = self.client.session
+        session["_2fa_user_id"] = self.user.id
+        session.save()
+        mock_match_token.return_value = object()
+
+        response = self.client.post(
+            reverse("api_auth_2fa_verify"),
+            data=json.dumps({"token": "654321"}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["authenticated"])
+        self.assertEqual(payload["username"], self.user.username)
+        self.assertNotIn("_2fa_user_id", self.client.session)
+
+    @patch("nomz.spa_api.match_token", return_value=None)
+    def test_auth_2fa_verify_invalid_code_returns_401(self, _mock_match_token):
+        session = self.client.session
+        session["_2fa_user_id"] = self.user.id
+        session.save()
+
+        response = self.client.post(
+            reverse("api_auth_2fa_verify"),
+            data=json.dumps({"token": "000000"}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 401)
+        self.assertIn("Invalid authentication code", response.json()["error"])

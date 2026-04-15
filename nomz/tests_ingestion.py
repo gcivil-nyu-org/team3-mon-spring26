@@ -1,7 +1,13 @@
 import socket
+import tempfile
 import urllib.error
+from hashlib import sha1
+from io import StringIO
+from types import SimpleNamespace
 from unittest.mock import patch
 
+from django.db import IntegrityError
+from django.core.management import call_command
 from django.test import SimpleTestCase, TestCase
 
 from nomz.filtering import (
@@ -12,7 +18,7 @@ from nomz.filtering import (
     parse_multi_values,
     restaurant_ordering,
 )
-from nomz.ingestion.persistence import DbIngestionWriter
+from nomz.ingestion.persistence import DbIngestionWriter, _normalize_inspection_key
 from nomz.ingestion.sources.dining_out_feed import (
     _coerce_phone,
     _extract_coordinates,
@@ -34,6 +40,7 @@ from nomz.ingestion.sources.socrata_client import (
     SocrataError,
     SocrataResource,
 )
+from nomz.ingestion.utils.normalization import normalize_text
 from nomz.models import Restaurant
 
 
@@ -410,3 +417,194 @@ class IngestionPersistenceTests(TestCase):
         self.assertTrue(
             Restaurant.objects.filter(id=existing.id, street="W 31 ST").exists()
         )
+
+
+class InspectionKeyNormalizationUnitTests(SimpleTestCase):
+    def test_normalize_inspection_key_uses_inspection_key_when_present(self):
+        row = {"inspection_key": "explicit-key"}
+        self.assertEqual(_normalize_inspection_key(row, restaurant_id=123), "explicit-key")
+
+    def test_normalize_inspection_key_hashes_fallback_fields(self):
+        row = {
+            "inspection_date": "2026-01-02",
+            "grade": "a",
+            "score": 10,
+            "critical_violations": None,
+            "noncritical_violations": 2,
+            "violation_description": "Some issue",
+        }
+        got = _normalize_inspection_key(row, restaurant_id=42)
+        parts = [
+            "42",
+            "2026-01-02",
+            "a",
+            "10",
+            "",
+            "2",
+            "Some issue",
+        ]
+        expected = sha1("|".join(parts).encode("utf-8")).hexdigest()
+        self.assertEqual(got, expected)
+
+        # Fallback to `violation` when `violation_description` missing.
+        row2 = dict(row)
+        row2.pop("violation_description")
+        row2["violation"] = "Alt desc"
+        got2 = _normalize_inspection_key(row2, restaurant_id=42)
+        self.assertNotEqual(got2, got)
+
+
+class PersistenceResolveRestaurantGapUnitTests(SimpleTestCase):
+    class _QS:
+        def __init__(self, *, exists_value=False, first_value=None, rows=None):
+            self._exists_value = exists_value
+            self._first_value = first_value
+            self._rows = rows or []
+
+        def filter(self, **_kwargs):
+            return self
+
+        def exists(self):
+            return self._exists_value
+
+        def order_by(self, *_args, **_kwargs):
+            return self
+
+        def first(self):
+            return self._first_value
+
+        def __iter__(self):
+            return iter(self._rows)
+
+    def test_resolve_restaurant_dry_run_returns_unsaved_restaurant_and_counts_create(self):
+        writer = DbIngestionWriter(dry_run=True)
+        record = {
+            "source": "EATERIES",
+            "name": "Dry Run Spot",
+            "street": "Some St",
+            "zip_code": "10001",
+            "borough": "Manhattan",
+            "latitude": "40.7",
+            "longitude": "-74.0",
+        }
+
+        with patch.object(
+            writer, "_find_restaurant_by_source_link", return_value=None
+        ), patch(
+            "nomz.ingestion.persistence.resolve_restaurant", return_value=(None, 0.2, "none")
+        ), patch(
+            "nomz.ingestion.persistence.Restaurant.objects.filter",
+            return_value=self._QS(exists_value=False, rows=[]),
+        ):
+            restaurant = writer._resolve_restaurant(record)
+
+        self.assertIsNotNone(restaurant)
+        self.assertEqual(writer.stats.records_created, 1)
+        self.assertEqual(getattr(restaurant, "name", None), "Dry Run Spot")
+        self.assertEqual(getattr(restaurant, "name_normalized", None), normalize_text("Dry Run Spot"))
+
+    def test_resolve_restaurant_integrity_error_recovers_existing_and_enriches(self):
+        """
+        Exercises the race-condition branch (289–324): create() raises IntegrityError,
+        then we re-fetch by name and enrich/sync that existing row.
+        """
+        writer = DbIngestionWriter(dry_run=False)
+        record = {
+            "source": "EATERIES",
+            "name": "Race Condition Cafe",
+            "street": "X",
+            "zip_code": "10001",
+            "borough": "Manhattan",
+        }
+
+        existing_restaurant = object()
+
+        qs_active = self._QS(exists_value=False, rows=[])
+        qs_name_none = self._QS(first_value=None)
+        qs_name_existing = self._QS(first_value=existing_restaurant)
+
+        def filter_side_effect(**kwargs):
+            # Candidate searches
+            if kwargs.get("is_active") is True:
+                return qs_active
+            # exact_name_match and IntegrityError recovery lookups
+            if "name__iexact" in kwargs:
+                if not hasattr(filter_side_effect, "calls"):
+                    filter_side_effect.calls = 0
+                filter_side_effect.calls += 1
+                return qs_name_none if filter_side_effect.calls == 1 else qs_name_existing
+            return self._QS()
+
+        with patch.object(
+            writer, "_find_restaurant_by_source_link", return_value=None
+        ), patch(
+            "nomz.ingestion.persistence.resolve_restaurant", return_value=(None, 0.0, "none")
+        ), patch(
+            "nomz.ingestion.persistence.Restaurant.objects.filter",
+            side_effect=filter_side_effect,
+        ), patch(
+            "nomz.ingestion.persistence.Restaurant.objects.create",
+            side_effect=IntegrityError("unique constraint"),
+        ), patch.object(
+            writer, "_apply_restaurant_enrichment"
+        ) as enrich, patch.object(
+            writer, "_sync_restaurant_search"
+        ) as sync:
+            got = writer._resolve_restaurant(record)
+
+        self.assertIs(got, existing_restaurant)
+        enrich.assert_called_once()
+        sync.assert_called_once()
+        self.assertEqual(writer.stats.records_matched, 1)
+        self.assertEqual(writer.stats.records_updated, 1)
+
+
+class FetchNycSourcesCommandTests(SimpleTestCase):
+    def test_call_command_executes_and_reports_output(self):
+        captured_kwargs = {}
+
+        def fake_run_ingestion(**kwargs):
+            captured_kwargs.update(kwargs)
+            kwargs["writer"]({"source": "EATERIES", "name": "Alpha"})
+            kwargs["writer"]({"source": "DOHMH", "name": "Beta"})
+            return SimpleNamespace(
+                total=2,
+                failures=1,
+                counts={"EATERIES": 1, "DINING_OUT": 0, "DOHMH": 1},
+                errors={"EATERIES": "non-tabular endpoint response"},
+            )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_path = f"{tmpdir}/normalized.jsonl"
+            stdout = StringIO()
+
+            with patch(
+                "nomz.management.commands.fetch_nyc_sources.run_ingestion",
+                side_effect=fake_run_ingestion,
+            ):
+                call_command(
+                    "fetch_nyc_sources",
+                    "--no-db",
+                    "--dry-run",
+                    "--pretty",
+                    "--output",
+                    output_path,
+                    stdout=stdout,
+                )
+
+            out = stdout.getvalue()
+            self.assertIn(f"Saved records to {output_path}", out)
+            self.assertIn("Ingestion finished | total=2 failures=1", out)
+            self.assertIn("Source errors:", out)
+            self.assertIn("Tip: skip this source for now with --skip-source EATERIES.", out)
+            self.assertIn("Dry-run mode: no database writes were committed.", out)
+            self.assertIn('"name": "Alpha"', out)
+            self.assertIn('"name": "Beta"', out)
+
+            self.assertEqual(captured_kwargs.get("skip_sources"), set())
+            self.assertEqual(captured_kwargs.get("max_records_per_source"), None)
+            with open(output_path, encoding="utf-8") as fh:
+                lines = [line.strip() for line in fh if line.strip()]
+            self.assertEqual(len(lines), 2)
+            self.assertTrue(any('"name": "Alpha"' in line for line in lines))
+            self.assertTrue(any('"name": "Beta"' in line for line in lines))
