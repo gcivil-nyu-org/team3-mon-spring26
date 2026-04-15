@@ -5,6 +5,7 @@ from django.contrib.auth import authenticate, get_user_model
 from django.http import HttpResponse
 from django.test import Client, RequestFactory, TestCase, override_settings
 from django.urls import path
+from django.utils import timezone
 
 from nomz.models import (
     LoginLog,
@@ -26,9 +27,14 @@ def _health_fail_view(_request):
     return HttpResponse("unhealthy", status=503)
 
 
+def _boom_view(_request):
+    raise ValueError("forced boom")
+
+
 urlpatterns = [
     path("admin/test-write/", _admin_post_view, name="test_admin_post"),
     path("health/", _health_fail_view, name="test_health_fail"),
+    path("boom/", _boom_view, name="test_boom"),
 ]
 
 
@@ -41,6 +47,7 @@ urlpatterns = [
 class MiddlewareCoverageTests(TestCase):
     def setUp(self):
         self.client = Client()
+        self.factory = RequestFactory()
         self.staff = get_user_model().objects.create_user(
             username="mw_staff",
             password="pass12345",
@@ -97,6 +104,77 @@ class MiddlewareCoverageTests(TestCase):
                 is_active=True,
             ).count(),
             1,
+        )
+
+    def test_unhandled_exception_path_records_audit_and_returns_500(self):
+        # Simulates an invalid/expired unauthenticated session context.
+        self.client.raise_request_exception = False
+        response = self.client.get(
+            "/boom/",
+            HTTP_X_FORWARDED_FOR="not-an-ip",
+            HTTP_USER_AGENT="UnsupportedAgent/0.0",
+        )
+        self.assertEqual(response.status_code, 500)
+
+        # Explicitly exercise lines 204-229 via direct middleware method invocation.
+        from nomz.middleware import SystemMonitoringMiddleware
+
+        request = self.factory.get(
+            "/boom/",
+            HTTP_X_FORWARDED_FOR="not-an-ip",
+            HTTP_USER_AGENT="UnsupportedAgent/0.0",
+        )
+        request.user = type("Anon", (), {"is_authenticated": False})()
+        mw = SystemMonitoringMiddleware(lambda _request: HttpResponse("ok", status=200))
+        mw._maybe_audit_exception(
+            request=request,
+            now=timezone.now(),
+            exception=ValueError("forced boom"),
+            status_code=500,
+            duration_ms=10,
+        )
+
+        audit = SystemAuditLog.objects.filter(action="unhandled_exception").first()
+        self.assertIsNotNone(audit)
+        self.assertIsNone(audit.actor_user)
+        self.assertEqual(audit.metadata.get("exception_class"), "ValueError")
+        self.assertIn("forced boom", audit.metadata.get("exception_message", ""))
+
+    def test_resolve_alerts_if_cleared_marks_active_alerts_resolved(self):
+        now = timezone.now()
+        SystemAlert.objects.create(
+            alert_type="HIGH_ERROR_RATE",
+            severity="HIGH",
+            message="error spike",
+            details={"error_rate": 0.5},
+            is_active=True,
+        )
+        SystemAlert.objects.create(
+            alert_type="HIGH_LATENCY",
+            severity="HIGH",
+            message="latency spike",
+            details={"avg_latency_ms": 2500},
+            is_active=True,
+        )
+
+        from nomz.middleware import SystemMonitoringMiddleware
+
+        mw = SystemMonitoringMiddleware(lambda _request: HttpResponse("ok", status=200))
+        mw._resolve_alerts_if_cleared(now)
+
+        self.assertEqual(
+            SystemAlert.objects.filter(
+                alert_type__in=["HIGH_ERROR_RATE", "HIGH_LATENCY"],
+                is_active=True,
+            ).count(),
+            0,
+        )
+        self.assertEqual(
+            SystemAlert.objects.filter(
+                alert_type__in=["HIGH_ERROR_RATE", "HIGH_LATENCY"],
+                resolved_at__isnull=False,
+            ).count(),
+            2,
         )
 
 
