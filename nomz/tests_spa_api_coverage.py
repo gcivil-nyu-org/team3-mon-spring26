@@ -8,7 +8,7 @@ from django.utils.http import urlsafe_base64_encode
 from django.utils.encoding import force_bytes
 from rest_framework.test import APIClient
 
-from nomz.models import Restaurant, SystemAuditLog, UserProfile
+from nomz.models import ModerationReport, Restaurant, Review, SystemAuditLog, UserPreference, UserProfile
 
 
 pytestmark = pytest.mark.django_db
@@ -242,3 +242,209 @@ def test_admin_recalculate_scores_filtering_branches_and_success():
         assert SystemAuditLog.objects.filter(
             action="admin_composite_score_recalculation"
         ).exists()
+
+
+def test_admin_moderation_data_permission_and_payload_rows():
+    client = APIClient()
+    staff = _create_user("staff_mod_data", role="diner", is_staff=True)
+    reporter = _create_user("reporter_mod_data", role="diner")
+
+    denied_user = _create_user("non_staff_mod_data", role="diner")
+    client.force_login(denied_user)
+    denied = client.get("/api/admin/moderation/")
+    assert denied.status_code == 403
+    assert denied.json()["error"] == "Staff access required."
+
+    restaurant = Restaurant.objects.create(name="Moderation Data Spot", cuisine_type="other", price_range="$$")
+    review = Review.objects.create(restaurant=restaurant, user=reporter, rating=2, comment="flag me")
+    ModerationReport.objects.create(
+        reporter=reporter,
+        review=review,
+        reason="SPAM",
+        details="pending case",
+        status="PENDING",
+    )
+    ModerationReport.objects.create(
+        reporter=reporter,
+        review=review,
+        reason="OTHER",
+        details="resolved case",
+        status="RESOLVED",
+    )
+
+    client.force_login(staff)
+    response = client.get("/api/admin/moderation/")
+    assert response.status_code == 200
+    payload = response.json()
+    assert "pending" in payload and "resolved" in payload
+    assert payload["pending"][0]["reporter_username"] == reporter.username
+    assert {"id", "reason", "details", "status", "created_at"}.issubset(
+        set(payload["pending"][0].keys())
+    )
+
+
+def test_admin_resolve_report_api_unflag_paths_and_not_found():
+    client = APIClient()
+    staff = _create_user("staff_mod_unflag", role="diner", is_staff=True)
+    reporter = _create_user("reporter_mod_unflag", role="diner")
+    reported_user = _create_user("reported_mod_unflag", role="diner")
+    owned_restaurant = Restaurant.objects.create(
+        owner=reported_user,
+        name="Reported Owner Spot",
+        cuisine_type="other",
+        price_range="$$",
+        is_flagged=True,
+    )
+    reported_user.userprofile.is_flagged = True
+    reported_user.userprofile.save(update_fields=["is_flagged"])
+
+    client.force_login(staff)
+    not_found = client.post(
+        "/api/admin/moderation/reports/999999/resolve/",
+        data=json.dumps({"action": "unflag"}),
+        content_type="application/json",
+    )
+    assert not_found.status_code == 404
+
+    report_user = ModerationReport.objects.create(
+        reporter=reporter,
+        reported_user=reported_user,
+        reason="FRAUD",
+        details="user branch",
+        status="RESOLVED",
+    )
+    user_branch = client.post(
+        f"/api/admin/moderation/reports/{report_user.id}/resolve/",
+        data=json.dumps(
+            {
+                "action": "unflag",
+                "moderator_note": "clear user",
+                "nested_meta": {"actor": {"id": staff.id, "role": "staff"}},
+            }
+        ),
+        content_type="application/json",
+    )
+    assert user_branch.status_code == 200
+    report_user.refresh_from_db()
+    reported_user.userprofile.refresh_from_db()
+    owned_restaurant.refresh_from_db()
+    assert report_user.status == "PENDING"
+    assert reported_user.userprofile.is_flagged is False
+    assert owned_restaurant.is_flagged is False
+
+    review_restaurant = Restaurant.objects.create(
+        name="Review Unflag Spot",
+        cuisine_type="other",
+        price_range="$$",
+    )
+    review = Review.objects.create(
+        restaurant=review_restaurant,
+        user=reporter,
+        rating=3,
+        is_flagged=True,
+    )
+    report_review = ModerationReport.objects.create(
+        reporter=reporter,
+        review=review,
+        reason="SPAM",
+        details="review branch",
+        status="RESOLVED",
+    )
+    review_branch = client.post(
+        f"/api/admin/moderation/reports/{report_review.id}/resolve/",
+        data=json.dumps({"action": "unflag", "moderator_note": "clear review"}),
+        content_type="application/json",
+    )
+    assert review_branch.status_code == 200
+    review.refresh_from_db()
+    report_review.refresh_from_db()
+    assert review.is_flagged is False
+    assert report_review.status == "PENDING"
+
+
+def test_restaurant_availability_update_parses_unavailable_until_formats():
+    client = APIClient()
+    owner = _create_user("owner_availability_parse", role="restaurant")
+    Restaurant.objects.create(
+        owner=owner,
+        name="Availability Parse Spot",
+        cuisine_type="other",
+        price_range="$$",
+        is_active=True,
+    )
+    client.force_login(owner)
+
+    response = client.post(
+        "/api/restaurant/availability/",
+        data=json.dumps(
+            {
+                "is_temporarily_unavailable": True,
+                "unavailable_reason": "Kitchen maintenance",
+                # Space-separated datetime exercises _parse_unavailable_until 1134-1141 path.
+                "unavailable_until": "2026-04-17 13:45:00",
+                "extra_nested": {"ops": {"ticket": 42, "severity": "high"}},
+            }
+        ),
+        content_type="application/json",
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["success"] is True
+    assert payload["is_temporarily_unavailable"] is True
+    assert payload["unavailable_until"]
+
+    owner_without_restaurant = _create_user("owner_missing_rest", role="restaurant")
+    client.force_login(owner_without_restaurant)
+    not_found = client.post(
+        "/api/restaurant/availability/",
+        data=json.dumps({"is_temporarily_unavailable": True}),
+        content_type="application/json",
+    )
+    assert not_found.status_code == 404
+
+
+def test_diner_recommendations_permission_and_preference_branches():
+    client = APIClient()
+
+    owner = _create_user("non_diner_for_recs", role="restaurant")
+    client.force_login(owner)
+    denied = client.get("/api/recommendations/")
+    assert denied.status_code == 403
+    assert denied.json()["error"] == "Diners only."
+
+    diner_no_prefs = _create_user("diner_no_prefs", role="diner")
+    client.force_login(diner_no_prefs)
+    no_prefs = client.get("/api/recommendations/")
+    assert no_prefs.status_code == 200
+    assert no_prefs.json()["requires_preferences"] is True
+
+    diner_blank = _create_user("diner_blank_prefs", role="diner")
+    UserPreference.objects.create(
+        user=diner_blank,
+        favorite_cuisines=[],
+        dietary_restrictions=[],
+        neighborhood_preference="",
+        price_preference="",
+    )
+    client.force_login(diner_blank)
+    blank_prefs = client.get("/api/recommendations/")
+    assert blank_prefs.status_code == 200
+    assert blank_prefs.json()["requires_preferences"] is True
+
+    diner_with_prefs = _create_user("diner_with_prefs", role="diner")
+    UserPreference.objects.create(
+        user=diner_with_prefs,
+        favorite_cuisines=["thai"],
+        dietary_restrictions=[],
+        neighborhood_preference="Queens",
+        price_preference="$$",
+    )
+    client.force_login(diner_with_prefs)
+    with patch("nomz.spa_api.recommend_restaurants_for_user", return_value=[]) as mock_recommend:
+        no_match = client.get("/api/recommendations/")
+        assert no_match.status_code == 200
+        payload = no_match.json()
+        assert payload["requires_preferences"] is False
+        assert "No restaurants currently match your saved preferences" in payload["message"]
+        assert payload["restaurants"] == []
+        assert mock_recommend.called

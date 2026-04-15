@@ -1,9 +1,9 @@
 from unittest.mock import MagicMock, patch
 
 from django.db import IntegrityError
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, TestCase
 
-from nomz.ingestion.persistence import DbIngestionWriter
+from nomz.ingestion.persistence import DbIngestionWriter, IngestionRunContext, IngestionStats
 
 
 class _CandidateQS:
@@ -133,3 +133,55 @@ class PersistenceCoverageTests(SimpleTestCase):
             except IntegrityError:
                 raised = True
             assert raised is True
+
+    def test_coerce_violations_list_and_string_paths(self):
+        writer = DbIngestionWriter(dry_run=True)
+        assert writer._coerce_violations(["  a  ", "", "b"]) == ["a", "b"]
+        assert writer._coerce_violations("  single violation  ") == ["single violation"]
+        assert writer._coerce_violations("   ") == []
+
+
+class IngestionRunContextCoverageTests(TestCase):
+    def test_partial_success_summary_and_batch_close_error_logging(self):
+        stats = IngestionStats(
+            records_processed=6,
+            records_created=3,
+            records_updated=1,
+            records_matched=1,
+            records_skipped=0,
+            records_failed=2,
+        )
+
+        ctx = IngestionRunContext(dataset="coverage-partial-success")
+
+        with patch("nomz.ingestion.persistence.logger") as mock_logger:
+            # Force summary save failure (lines 620-633 logging path).
+            with patch.object(
+                ctx.run, "save", side_effect=Exception("summary save failed")
+            ):
+                ctx.set_summary(
+                    stats,
+                    errors={"DINING_OUT": "write error", "DOHMH": "timeout"},
+                    status="failed",
+                )
+
+            # In-memory fields still reflect partial-success style payload.
+            assert ctx.run.records_processed == 6
+            assert ctx.run.records_created == 3
+            assert ctx.run.records_updated == 1
+            assert ctx.run.error_count == 2
+            assert ctx.run.error_log == [
+                "DINING_OUT: write error",
+                "DOHMH: timeout",
+            ]
+
+            # Force close-phase failure (lines 606-633 batch close logging path).
+            with patch.object(
+                ctx.run, "save", side_effect=Exception("batch close failed")
+            ):
+                result = ctx.__exit__(None, None, None)
+                assert result is False
+
+            logged_messages = [call.args[0] for call in mock_logger.exception.call_args_list]
+            assert any("Failed to persist ingestion run summary" in m for m in logged_messages)
+            assert any("Failed to close ingestion run context" in m for m in logged_messages)

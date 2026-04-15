@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from hashlib import sha1
+import logging
 import time
 from typing import Any, Dict, Optional
 
@@ -22,6 +23,8 @@ from nomz.models import (
     RestaurantSearch,
     RestaurantSourceRecord,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _to_decimal(value: object) -> Optional[Decimal]:
@@ -608,7 +611,17 @@ class IngestionRunContext:
             self.run.status = "failed"
         else:
             self.run.status = "success"
-        self.run.save(update_fields=["status", "finished_at"])
+        try:
+            self.run.save(update_fields=["status", "finished_at"])
+        except Exception:
+            logger.exception(
+                "Failed to close ingestion run context",
+                extra={
+                    "dataset": self.dataset,
+                    "run_id": getattr(self.run, "id", None),
+                    "phase": "batch_close",
+                },
+            )
         return False
 
     def set_summary(
@@ -630,4 +643,14 @@ class IngestionRunContext:
             self.run.error_log = [f"{key}: {value}" for key, value in errors.items()]
         else:
             self.run.error_log = []
-        self.run.save()
+        try:
+            self.run.save()
+        except Exception:
+            logger.exception(
+                "Failed to persist ingestion run summary",
+                extra={
+                    "dataset": self.dataset,
+                    "run_id": getattr(self.run, "id", None),
+                    "phase": "set_summary",
+                },
+            )
