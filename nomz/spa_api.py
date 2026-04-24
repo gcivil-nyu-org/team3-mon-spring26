@@ -6,6 +6,7 @@ Uses session cookies + @csrf_exempt on mutating POSTs (same pattern as api_views
 from __future__ import annotations
 
 import json
+import logging
 
 from django.contrib.auth import login, logout
 from django.contrib.auth.forms import (
@@ -68,6 +69,8 @@ from .api_views import (  # reuse helpers
     _is_restaurant_owner,
     _json_error,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _staff_json_required(request):
@@ -270,12 +273,16 @@ def auth_password_reset_request(request):
 
     form = PasswordResetForm({"email": email})
     if form.is_valid():
-        form.save(
-            request=request,
-            use_https=request.is_secure(),
-            email_template_name="registration/password_reset_email_spa.html",
-            subject_template_name="registration/password_reset_subject.txt",
-        )
+        try:
+            form.save(
+                request=request,
+                use_https=request.is_secure(),
+                email_template_name="registration/password_reset_email_spa.html",
+                subject_template_name="registration/password_reset_subject.txt",
+            )
+        except Exception:
+            # Keep response generic to avoid exposing account/email send details.
+            logger.exception("Password reset email send failed.")
     # Always return success to prevent email enumeration
     return JsonResponse({"success": True})
 
@@ -1263,13 +1270,26 @@ def _search_results_payload(request):
 
     base_restaurants = sort_restaurant_queryset(base_restaurants, sort_by)
 
+    def _display_cuisine(restaurant: Restaurant) -> str:
+        """
+        Prefer explicit cuisine labels, but treat placeholder values as empty so we
+        can fall back to real tags.
+        """
+        cuisine_value = (restaurant.cuisine or "").strip()
+        cuisine_type_value = (restaurant.cuisine_type or "").strip()
+        placeholder_values = {"other", "unknown", "n/a", "none"}
+
+        if cuisine_value and cuisine_value.lower() not in placeholder_values:
+            return cuisine_value
+        if cuisine_type_value and cuisine_type_value.lower() not in placeholder_values:
+            return cuisine_type_value
+        if restaurant.cuisine_tags:
+            return ", ".join(str(tag) for tag in restaurant.cuisine_tags[:3] if str(tag).strip())
+        return ""
+
     results = []
     for restaurant in base_restaurants:
-        fallback_cuisine = restaurant.cuisine or restaurant.cuisine_type or ""
-        if not fallback_cuisine and restaurant.cuisine_tags:
-            fallback_cuisine = ", ".join(
-                str(tag) for tag in restaurant.cuisine_tags[:3]
-            )
+        fallback_cuisine = _display_cuisine(restaurant)
         results.append(
             {
                 "id": restaurant.id,
@@ -1305,9 +1325,19 @@ def _search_results_payload(request):
 
 
 def _recommendation_card(restaurant: Restaurant) -> dict:
-    fallback_cuisine = restaurant.cuisine or restaurant.cuisine_type or ""
-    if not fallback_cuisine and restaurant.cuisine_tags:
-        fallback_cuisine = ", ".join(str(tag) for tag in restaurant.cuisine_tags[:3])
+    cuisine_value = (restaurant.cuisine or "").strip()
+    cuisine_type_value = (restaurant.cuisine_type or "").strip()
+    placeholder_values = {"other", "unknown", "n/a", "none"}
+    if cuisine_value and cuisine_value.lower() not in placeholder_values:
+        fallback_cuisine = cuisine_value
+    elif cuisine_type_value and cuisine_type_value.lower() not in placeholder_values:
+        fallback_cuisine = cuisine_type_value
+    elif restaurant.cuisine_tags:
+        fallback_cuisine = ", ".join(
+            str(tag) for tag in restaurant.cuisine_tags[:3] if str(tag).strip()
+        )
+    else:
+        fallback_cuisine = ""
     return {
         "id": restaurant.id,
         "name": restaurant.name,

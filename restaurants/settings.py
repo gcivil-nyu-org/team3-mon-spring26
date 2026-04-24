@@ -97,7 +97,8 @@ ROOT_URLCONF = "restaurants.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        # Include project-level templates (e.g., password reset email templates).
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -232,24 +233,16 @@ LOGIN_URL = "/signin/"
 LOGIN_REDIRECT_URL = "landing"
 LOGOUT_REDIRECT_URL = "landing"
 
-# Email (Django built-in). Credentials from env only; never hardcode.
-# When EMAIL_HOST_USER is set (e.g. Gmail App Password), use SMTP; else file backend in DEBUG, console otherwise.
+# Email (Gmail SMTP). Keep credentials in environment variables only.
+# Example .env placeholders:
+# EMAIL_HOST_USER=your_email@gmail.com
+# EMAIL_HOST_PASSWORD=your_gmail_app_password
 EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
-EMAIL_BACKEND = (
-    "django.core.mail.backends.smtp.EmailBackend"
-    if EMAIL_HOST_USER
-    else (
-        "django.core.mail.backends.filebased.EmailBackend"
-        if DEBUG
-        else "django.core.mail.backends.console.EmailBackend"
-    )
-)
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = config("EMAIL_HOST", default="smtp.gmail.com")
 EMAIL_PORT = config("EMAIL_PORT", default=587, cast=int)
 EMAIL_USE_TLS = config("EMAIL_USE_TLS", default=True, cast=bool)
-# File backend writes to this directory when DEBUG and no Gmail config.
-EMAIL_FILE_PATH = BASE_DIR / "tmp" / "emails"
 DEFAULT_FROM_EMAIL = config(
     "DEFAULT_FROM_EMAIL", default=EMAIL_HOST_USER or "webmaster@localhost"
 )

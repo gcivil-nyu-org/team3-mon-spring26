@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@figma/my-make-file": "file:.."
+  }
+}
