@@ -5,9 +5,11 @@ import { apiFetch } from '../api';
 export function SignUp({
   onBackClick,
   onSignUp,
+  onLoginClick,
 }: {
   onBackClick: () => void;
   onSignUp: (accountType: 'diner' | 'restaurant' | 'admin', username: string) => void;
+  onLoginClick: () => void;
 }) {
   const [accountType, setAccountType] = useState<'diner' | 'restaurant' | ''>('');
   const [error, setError] = useState<string | null>(null);
@@ -288,9 +290,23 @@ export function SignUp({
             fontFamily: 'Montserrat, sans-serif', 
             color: '#666' 
           }}>
-            Already have an account? <span className="cursor-pointer transition-all" title="Log in to your account" style={{ 
-              color: '#E06E7F' 
-            }}>Log in</span>
+            Already have an account?{' '}
+            <button
+              type="button"
+              onClick={onLoginClick}
+              className="cursor-pointer transition-all"
+              title="Log in to your account"
+              style={{
+                color: '#E06E7F',
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                fontFamily: 'inherit',
+                fontSize: 'inherit',
+              }}
+            >
+              Log in
+            </button>
           </p>
         </div>
       </div>

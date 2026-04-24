@@ -301,6 +301,7 @@ function SignUpPage() {
     <div className="h-screen w-screen overflow-hidden">
       <SignUp
         onBackClick={() => navigate('/home/')}
+        onLoginClick={() => navigate('/signin/')}
         onSignUp={(accountType, username) => {
           setUserData({ username, accountType });
           if (accountType === 'diner') {
