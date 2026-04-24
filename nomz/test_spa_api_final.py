@@ -844,7 +844,9 @@ def test_restaurant_search_api_success(api_client, diner_user, public_restaurant
     assert public_restaurant.id in ids
 
 
-def test_restaurant_search_api_prefers_tags_when_cuisine_is_placeholder(api_client, diner_user):
+def test_restaurant_search_api_prefers_tags_when_cuisine_is_placeholder(
+    api_client, diner_user
+):
     restaurant = Restaurant.objects.create(
         owner=None,
         name=_unique("Cuisine Placeholder Spot"),
@@ -860,7 +862,9 @@ def test_restaurant_search_api_prefers_tags_when_cuisine_is_placeholder(api_clie
     api_client.force_login(diner_user)
     r = api_client.get("/api/search/?q=Cuisine%20Placeholder")
     assert r.status_code == 200
-    row = next((item for item in r.json()["results"] if item["id"] == restaurant.id), None)
+    row = next(
+        (item for item in r.json()["results"] if item["id"] == restaurant.id), None
+    )
     assert row is not None
     assert row["cuisine"] == "Indian, Japanese"
 

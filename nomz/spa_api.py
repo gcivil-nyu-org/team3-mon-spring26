@@ -1284,7 +1284,9 @@ def _search_results_payload(request):
         if cuisine_type_value and cuisine_type_value.lower() not in placeholder_values:
             return cuisine_type_value
         if restaurant.cuisine_tags:
-            return ", ".join(str(tag) for tag in restaurant.cuisine_tags[:3] if str(tag).strip())
+            return ", ".join(
+                str(tag) for tag in restaurant.cuisine_tags[:3] if str(tag).strip()
+            )
         return ""
 
     results = []
