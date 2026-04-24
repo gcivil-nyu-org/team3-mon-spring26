@@ -71,4 +71,22 @@ if [[ ! -d "${assets_dir}" ]] || ! compgen -G "${assets_dir}/*" >/dev/null 2>&1;
   exit 1
 fi
 
-echo "eb_build_frontend: OK ($(wc -c < "${FRONTEND}/dist/index.html" | tr -d ' ') bytes index.html)"
+# Verify every asset referenced by index.html actually exists on disk.
+# Without this, a stale committed dist whose index.html points at files that
+# were never committed produces a blank SPA: the HTML loads but the browser
+# 404s on the JS/CSS and React never mounts.
+index_html="${FRONTEND}/dist/index.html"
+missing=0
+while IFS= read -r asset; do
+  [[ -z "${asset}" ]] && continue
+  if [[ ! -f "${assets_dir}/${asset}" ]]; then
+    echo "eb_build_frontend: ERROR index.html references /assets/${asset} but the file is missing."
+    missing=$((missing + 1))
+  fi
+done < <(grep -oE '/assets/[A-Za-z0-9._-]+' "${index_html}" | sed 's|^/assets/||' | sort -u)
+if (( missing > 0 )); then
+  echo "eb_build_frontend: ${missing} missing asset(s); deployed SPA would render a blank page. Rebuild and recommit frontend/dist/."
+  exit 1
+fi
+
+echo "eb_build_frontend: OK ($(wc -c < "${index_html}" | tr -d ' ') bytes index.html, all referenced assets present)"

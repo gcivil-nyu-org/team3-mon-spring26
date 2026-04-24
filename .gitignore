@@ -220,4 +220,17 @@ __marimo__/
 
 # AWS credentials helper (contains secrets)
 aws-config.ps1
+
+# OS cruft
 .DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Editor swap / backup files
+*.swp
+*.swo
+*~
+
+# Claude Code per-user workflow artifacts
+.claude/

@@ -4,7 +4,12 @@ yarn.lock
 pnpm-lock.yaml
 
 # Build output
-dist/
+# NOTE: dist/ is intentionally TRACKED in this repo — see root .gitignore.
+# Elastic Beanstalk uses frontend/dist/ as a deploy-time fallback when the
+# server-side npm/vite rebuild fails, so if dist/ is ignored here new build
+# artifacts silently never get committed and the fallback rots out of sync
+# with index.html, producing a blank SPA.
+# dist/
 dist-ssr/
 *.local
 

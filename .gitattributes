@@ -1,0 +1,9 @@
+# Keep deployment-critical scripts in Unix format for EB Linux instances.
+*.sh text eol=lf
+Procfile text eol=lf
+.ebextensions/*.config text eol=lf
+
+# Treat Vite's hashed build output as binary. The filename's hash is content-
+# based; any line-ending conversion by git on Windows checkouts would corrupt
+# the contents and make the filename/content pair inconsistent.
+frontend/dist/assets/** binary
