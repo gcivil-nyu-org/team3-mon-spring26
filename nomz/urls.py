@@ -1,16 +1,10 @@
-from django.urls import path, re_path
+from django.urls import path
 from django.views.generic import RedirectView
 
-from . import api_views, spa_api, spa_shell_views, views
+from . import api_views, spa_api, views, html_views
 
 # --- Health & JSON API (unchanged paths) ---------------------------------
 urlpatterns = [
-    # Vite hashed files under /assets/ (must stay ahead of SPA catch-alls)
-    path(
-        "assets/<path:asset_path>",
-        spa_shell_views.spa_asset,
-        name="spa_asset",
-    ),
     path("health/", views.health_check, name="health_check"),
     path(
         "api/restaurants/map-data/",
@@ -187,6 +181,11 @@ urlpatterns = [
         name="api_restaurant_communication",
     ),
     path(
+        "api/restaurant/performance/",
+        spa_api.restaurant_performance_api,
+        name="api_restaurant_performance",
+    ),
+    path(
         "api/reviews/<int:review_id>/respond/",
         spa_api.review_respond_api,
         name="api_review_respond",
@@ -285,89 +284,331 @@ urlpatterns += [
     ),
 ]
 
-# --- Legacy URL names → same SPA shell (React is the main UI) --------------
-_SPA_NAMED = [
-    ("", "landing"),
-    ("home/", "home"),
-    ("signin/", "signin"),
-    ("map/", "map"),
-    ("register/", "register"),
-    ("logout/", "logout"),
-    ("profile/", "profile"),
-    ("dashboard/", "dashboard"),
-    ("restaurant-profile/", "restaurant_profile"),
-    ("search/", "restaurant_search"),
-    ("preferences/", "manage_preferences"),
-    ("recommendations/", "recommendations"),
-    ("restaurant/claim/", "claim_restaurant"),
-    ("restaurant/create/", "create_restaurant"),
-    ("restaurant/edit/", "edit_restaurant"),
-    ("restaurant/availability/", "manage_availability"),
-    ("restaurant/activate/", "manage_activation"),
-    ("restaurant/communication/", "manage_communication_settings"),
-    ("restaurant/photos/", "restaurant_photos"),
-    ("restaurant/photos/upload/", "upload_photo"),
-    ("restaurant/photos/<int:photo_id>/delete/", "delete_photo"),
-    ("restaurant/photos/<int:photo_id>/set-primary/", "set_primary_photo"),
-    ("password-reset/", "password_reset"),
-    ("password-reset/done/", "password_reset_done"),
-    ("reset/<uidb64>/<token>/", "password_reset_confirm"),
-    ("reset/done/", "password_reset_complete"),
-    ("admin-login/", "admin_login"),
-    ("nomz-admin/logs/", "admin_login_logs"),
-    ("nomz-admin/users/", "admin_manage_users"),
-    ("nomz-admin/users/<int:user_id>/toggle/", "toggle_user_status"),
-    ("nomz-admin/approved-accounts/", "admin_approved_accounts"),
-    ("nomz-admin/rejected-accounts/", "admin_rejected_accounts"),
-    ("nomz-admin/pending-approvals/", "admin_pending_approvals"),
-    ("nomz-admin/approve/<int:user_id>/", "admin_approve_restaurant"),
-    ("nomz-admin/reject/<int:user_id>/", "admin_reject_restaurant"),
-    ("restaurant/<int:restaurant_id>/review/", "add_review"),
-    ("restaurant/<int:restaurant_id>/", "restaurant_detail"),
-    # Friends chat (React + /api/friends-chat/); order matters vs <str:username>
-    ("friends-chat/", "friends_chat_index"),
-    ("friends-chat/group/create/", "create_group_chat"),
-    (
-        "friends-chat/group/<int:conversation_id>/manage/",
-        "manage_group_member",
-    ),
-    ("friends-chat/group/<int:conversation_id>/leave/", "leave_group"),
-    (
-        "friends-chat/group/<int:conversation_id>/recommend/",
-        "recommend_friend_restaurant_by_id",
-    ),
-    (
-        "friends-chat/group/<int:conversation_id>/toggle-shared/",
-        "toggle_shared_restaurant_by_id",
-    ),
-    ("friends-chat/group/<int:conversation_id>/", "friends_chat_detail_by_id"),
-    ("friends-chat/<str:username>/recommend/", "recommend_friend_restaurant"),
-    ("friends-chat/<str:username>/toggle-shared/", "toggle_shared_restaurant"),
-    ("friends-chat/<str:username>/", "friends_chat_detail"),
-    ("messages/", "message_inbox"),
-    ("messages/restaurant/<int:restaurant_id>/", "message_restaurant"),
-    ("messages/conversations/<int:conversation_id>/", "conversation_detail"),
-    ("report/<str:content_type>/<int:content_id>/", "report_content"),
-    ("nomz-admin/moderation/", "admin_moderation_dashboard"),
-    ("nomz-admin/moderation/resolve/<int:report_id>/", "admin_resolve_report"),
+# ==============================================================================
+# HTML TEMPLATE VIEWS (Replacing React SPA)
+# ==============================================================================
+
+# Public pages
+urlpatterns += [
+    path("", html_views.home, name="landing"),
+    path("home/", html_views.home, name="home"),
 ]
 
-for _route, _name in _SPA_NAMED:
-    if _route == "":
-        urlpatterns.append(
-            path("", spa_shell_views.spa_index, name=_name),
-        )
-    elif "<" in _route:
-        urlpatterns.append(
-            path(_route, spa_shell_views.spa_index, name=_name),
-        )
-    else:
-        urlpatterns.append(
-            path(_route, spa_shell_views.spa_index, name=_name),
-        )
+# Authentication pages
+urlpatterns += [
+    path("signin/", html_views.signin, name="signin"),
+    path("register/", html_views.signup, name="register"),
+    path("logout/", html_views.logout_view, name="logout"),
+    path("password-reset/", html_views.password_reset, name="password_reset"),
+    path(
+        "password-reset/done/",
+        html_views.password_reset_done,
+        name="password_reset_done",
+    ),
+    path(
+        "password-reset/confirm/",
+        html_views.password_reset_confirm,
+        name="password_reset_confirm",
+    ),
+    path(
+        "password-reset/complete/",
+        html_views.password_reset_complete,
+        name="password_reset_complete",
+    ),
+    path(
+        "reset/<uidb64>/<token>/",
+        html_views.password_reset_confirm,
+        name="password_reset_confirm_link",
+    ),
+    path(
+        "reset/done/",
+        html_views.password_reset_complete,
+        name="password_reset_complete_legacy",
+    ),
+    path("admin-login/", html_views.admin_login, name="admin_login"),
+]
 
-# Catch-all: deep links and any path not listed above (still not under /api/)
-# ✅ Proper catch-all for React SPA (must be LAST)
-urlpatterns.append(
-    re_path(r"^.*$", spa_shell_views.spa_index),
+# Dashboard (smart router)
+urlpatterns += [
+    path("dashboard/", html_views.dashboard, name="dashboard"),
+]
+
+# Diner pages
+urlpatterns += [
+    path("map/", html_views.map_view, name="map"),
+    path("search/", html_views.search_results, name="restaurant_search"),
+    path("profile/", html_views.user_profile, name="profile"),
+    path("preferences/", html_views.manage_preferences, name="manage_preferences"),
+    path("recommendations/", html_views.recommendations, name="recommendations"),
+    path(
+        "restaurant/<int:restaurant_id>/",
+        html_views.restaurant_detail,
+        name="restaurant_detail",
+    ),
+    path(
+        "restaurant/<int:restaurant_id>/review/",
+        html_views.add_review,
+        name="add_review",
+    ),
+    path("messages/", html_views.messages_view, name="message_inbox"),
+    path(
+        "messages/restaurant/<int:restaurant_id>/",
+        html_views.start_message,
+        name="message_restaurant",
+    ),
+    path(
+        "messages/conversations/<int:conversation_id>/",
+        html_views.message_thread,
+        name="conversation_detail",
+    ),
+    path(
+        "report/<str:content_type>/<int:content_id>/",
+        html_views.report_content,
+        name="report_content",
+    ),
+]
+
+# Friends chat
+urlpatterns += [
+    path("friends-chat/", html_views.friends_chat, name="friends_chat_html"),
+    # Alias: /friends/ → /friends-chat/ (used by nav links in dashboard/map)
+    path(
+        "friends/",
+        RedirectView.as_view(url="/friends-chat/", permanent=False),
+        name="friends_redirect",
+    ),
+]
+
+# Restaurant owner pages
+urlpatterns += [
+    path(
+        "restaurant-profile/", html_views.restaurant_profile, name="restaurant_profile"
+    ),
+    path("restaurant/photos/", html_views.photo_management, name="restaurant_photos"),
+    path("restaurant/photos/upload/", html_views.upload_photo, name="upload_photo"),
+    path("restaurant/claim/", html_views.claim_restaurant, name="claim_restaurant"),
+    path("restaurant/create/", html_views.create_restaurant, name="create_restaurant"),
+    path("restaurant/edit/", html_views.edit_restaurant, name="edit_restaurant"),
+    path(
+        "restaurant/availability/",
+        html_views.manage_availability,
+        name="manage_availability",
+    ),
+    path(
+        "restaurant/activate/", html_views.manage_activation, name="manage_activation"
+    ),
+    path(
+        "restaurant/communication/",
+        html_views.manage_communication_settings,
+        name="manage_communication_settings",
+    ),
+    path("restaurant/map/", html_views.restaurant_map, name="restaurant_map"),
+]
+
+# Admin pages
+urlpatterns += [
+    path("nomz-admin/", html_views.admin_dashboard, name="admin_dashboard"),
+    path("nomz-admin/map/", html_views.admin_map, name="admin_map"),
+    path(
+        "nomz-admin/moderation/",
+        html_views.admin_moderation,
+        name="admin_moderation_dashboard",
+    ),
+    path(
+        "nomz-admin/moderation/resolve/<int:report_id>/",
+        html_views.resolve_report,
+        name="admin_resolve_report",
+    ),
+    path(
+        "nomz-admin/pending-approvals/",
+        html_views.pending_approvals,
+        name="admin_pending_approvals",
+    ),
+    path("nomz-admin/users/", html_views.manage_users, name="admin_manage_users"),
+    path("nomz-admin/logs/", html_views.admin_logs, name="admin_login_logs"),
+    path(
+        "nomz-admin/approved-accounts/",
+        html_views.approved_accounts,
+        name="admin_approved_accounts",
+    ),
+    path(
+        "nomz-admin/rejected-accounts/",
+        html_views.rejected_accounts,
+        name="admin_rejected_accounts",
+    ),
+]
+
+# --- Modernized Friend Chat Route Overrides ---
+# These overrides point existing URL names and paths to the modernized v2 views.
+# They are inserted at the beginning of the list to ensure they take precedence.
+urlpatterns.insert(
+    0, path("friends-chat/", views.friends_chat_index_v2, name="friends_chat_index")
+)
+urlpatterns.insert(
+    0,
+    path(
+        "friends-chat/group/create/",
+        views.create_group_chat_v2,
+        name="create_group_chat",
+    ),
+)
+urlpatterns.insert(
+    0,
+    path(
+        "friends-chat/group/<int:conversation_id>/manage/",
+        views.manage_group_member_v2,
+        name="manage_group_member",
+    ),
+)
+urlpatterns.insert(
+    0,
+    path(
+        "friends-chat/group/<int:conversation_id>/leave/",
+        views.leave_group_v2,
+        name="leave_group",
+    ),
+)
+urlpatterns.insert(
+    0,
+    path(
+        "friends-chat/group/<int:conversation_id>/recommend/",
+        views.recommend_friend_restaurant_v2,
+        name="recommend_friend_restaurant_by_id",
+    ),
+)
+urlpatterns.insert(
+    0,
+    path(
+        "friends-chat/group/<int:conversation_id>/toggle-shared/",
+        views.toggle_shared_restaurant_v2,
+        name="toggle_shared_restaurant_by_id",
+    ),
+)
+urlpatterns.insert(
+    0,
+    path(
+        "friends-chat/group/<int:conversation_id>/",
+        views.friends_chat_detail_v2,
+        name="friends_chat_detail_by_id",
+    ),
+)
+urlpatterns.insert(
+    0,
+    path(
+        "friends-chat/<str:username>/recommend/",
+        views.recommend_friend_restaurant_v2,
+        name="recommend_friend_restaurant",
+    ),
+)
+urlpatterns.insert(
+    0,
+    path(
+        "friends-chat/<str:username>/toggle-shared/",
+        views.toggle_shared_restaurant_v2,
+        name="toggle_shared_restaurant",
+    ),
+)
+urlpatterns.insert(
+    0,
+    path(
+        "friends-chat/<str:username>/",
+        views.friends_chat_detail_v2,
+        name="friends_chat_detail",
+    ),
+)
+
+# Also register the v2 names for use in modernized templates
+urlpatterns.insert(
+    0,
+    path("friends-chat-v2/", views.friends_chat_index_v2, name="friends_chat_index_v2"),
+)
+urlpatterns.insert(
+    0,
+    path(
+        "friends-chat-v2/group/create/",
+        views.create_group_chat_v2,
+        name="create_group_chat_v2",
+    ),
+)
+urlpatterns.insert(
+    0,
+    path(
+        "friends-chat-v2/group/<int:conversation_id>/manage/",
+        views.manage_group_member_v2,
+        name="manage_group_member_v2",
+    ),
+)
+urlpatterns.insert(
+    0,
+    path(
+        "friends-chat-v2/group/<int:conversation_id>/leave/",
+        views.leave_group_v2,
+        name="leave_group_v2",
+    ),
+)
+urlpatterns.insert(
+    0,
+    path(
+        "friends-chat-v2/group/<int:conversation_id>/recommend/",
+        views.recommend_friend_restaurant_v2,
+        name="recommend_friend_restaurant_v2_by_id",
+    ),
+)
+urlpatterns.insert(
+    0,
+    path(
+        "friends-chat-v2/group/<int:conversation_id>/toggle-shared/",
+        views.toggle_shared_restaurant_v2,
+        name="toggle_shared_restaurant_v2_by_id",
+    ),
+)
+urlpatterns.insert(
+    0,
+    path(
+        "friends-chat-v2/group/<int:conversation_id>/",
+        views.friends_chat_detail_v2,
+        name="friends_chat_detail_v2_by_id",
+    ),
+)
+urlpatterns.insert(
+    0,
+    path(
+        "friends-chat-v2/<str:username>/recommend/",
+        views.recommend_friend_restaurant_v2,
+        name="recommend_friend_restaurant_v2",
+    ),
+)
+urlpatterns.insert(
+    0,
+    path(
+        "friends-chat-v2/<str:username>/toggle-shared/",
+        views.toggle_shared_restaurant_v2,
+        name="toggle_shared_restaurant_v2",
+    ),
+)
+urlpatterns.insert(
+    0,
+    path(
+        "friends-chat-v2/<str:username>/",
+        views.friends_chat_detail_v2,
+        name="friends_chat_detail_v2",
+    ),
+)
+urlpatterns.insert(
+    0,
+    path(
+        "friends-chat-v2/seed/", views.seed_restaurants_v2, name="seed_restaurants_v2"
+    ),
+)
+urlpatterns.insert(
+    0,
+    path(
+        "api/restaurants/search-v2/",
+        views.restaurant_search_api_v2,
+        name="restaurant_search_api_v2",
+    ),
+)
+urlpatterns.insert(
+    0,
+    path("api/diner-search-v2/", views.diner_search_api_v2, name="diner_search_api_v2"),
 )

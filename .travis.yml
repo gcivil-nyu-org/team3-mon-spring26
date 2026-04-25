@@ -48,38 +48,51 @@ after_success:
 # Do not build frontend in Travis deploy job. Building in CI mutates the working
 # tree and can produce oversized/corrupt EB bundles.
 
-# Dual-deploy: strict branch isolation.
-#   develop -> nomz-dev  (staging AWS account 709436855295, nomzdev.dpdns.org)
-#   production -> nomz-prod (production AWS account 554903866296, nomz.dpdns.org)
-# Per-branch credentials keep the two AWS accounts fully separate.
+# Dual-deploy via a single deploy block with branch-dependent env vars.
+# Reason: Travis DPL v2 (2.0.5.x) silently collapses multiple deploy blocks
+# that share the same provider, keeping only the last one. A list of two
+# `provider: elasticbeanstalk` blocks therefore only ever deploys the final
+# entry. Using before_deploy to set credentials/env/bucket based on the
+# current branch gives us real branch isolation with a single deploy block.
+#   develop -> nomz-dev (AWS 709436855295, nomzdev.dpdns.org)
+#   production -> nomz-prod (AWS 554903866296, nomz.dpdns.org)
+before_deploy:
+  - |
+    if [ "$TRAVIS_BRANCH" = "develop" ]; then
+      echo "Travis: configuring deploy for nomz-dev (develop branch, AWS 709436855295)"
+      export EB_ACCESS_KEY_ID="$AWS_DEVELOP_ACCESS_KEY_ID"
+      export EB_SECRET_ACCESS_KEY="$AWS_DEVELOP_SECRET_ACCESS_KEY"
+      export EB_ENV="nomz-dev"
+      export EB_BUCKET="nomz-static-files-friend2-dev"
+    elif [ "$TRAVIS_BRANCH" = "production" ]; then
+      echo "Travis: configuring deploy for nomz-prod (production branch, AWS 554903866296)"
+      export EB_ACCESS_KEY_ID="$AWS_PRODUCTION_ACCESS_KEY_ID"
+      export EB_SECRET_ACCESS_KEY="$AWS_PRODUCTION_SECRET_ACCESS_KEY"
+      export EB_ENV="nomz-prod"
+      export EB_BUCKET="nomz-static-files-friend-2026"
+    else
+      echo "Travis: unexpected deploy branch $TRAVIS_BRANCH; aborting."
+      exit 1
+    fi
+
 deploy:
-  - provider: elasticbeanstalk
-    skip_cleanup: true
-    access_key_id: $AWS_DEVELOP_ACCESS_KEY_ID
-    secret_access_key: $AWS_DEVELOP_SECRET_ACCESS_KEY
-    region: us-east-1
-    app: nomz-app
-    env: nomz-dev
-    bucket_name: nomz-static-files-friend2-dev
-    bucket_path: deployments
-    on:
-      branch: develop
-      condition: $TRAVIS_TEST_RESULT = 0 && $TRAVIS_PULL_REQUEST = false
+  provider: elasticbeanstalk
+  skip_cleanup: true
+  access_key_id: $EB_ACCESS_KEY_ID
+  secret_access_key: $EB_SECRET_ACCESS_KEY
+  region: us-east-1
+  app: nomz-app
+  env: $EB_ENV
+  bucket_name: $EB_BUCKET
+  bucket_path: deployments
+  on:
+    all_branches: true
+    condition: $TRAVIS_TEST_RESULT = 0
 
-  - provider: elasticbeanstalk
-    skip_cleanup: true
-    access_key_id: $AWS_PRODUCTION_ACCESS_KEY_ID
-    secret_access_key: $AWS_PRODUCTION_SECRET_ACCESS_KEY
-    region: us-east-1
-    app: nomz-app
-    env: nomz-prod
-    bucket_name: nomz-static-files-friend-2026
-    bucket_path: deployments
-    on:
-      branch: production
-      condition: $TRAVIS_TEST_RESULT = 0 && $TRAVIS_PULL_REQUEST = false
-
-# Branches to build (main is deprecated and intentionally excluded)
+# Branches to build (main is deprecated and intentionally excluded).
+# `branches.only` combined with `deploy.on.all_branches: true` means only
+# develop and production ever deploy — before_deploy guards against any other
+# branch slipping through.
 branches:
   only:
     - develop

@@ -1,0 +1,11 @@
+<!-- Public Navbar -->
+<nav class="navbar">
+    <a href="{% if user.is_authenticated %}{% if user.is_staff %}/nomz-admin/{% elif user.userprofile.account_type == 'restaurant' %}/restaurant-profile/{% else %}/dashboard/{% endif %}{% else %}/{% endif %}" class="logo">
+        nomz
+    </a>
+
+    <div class="nav-actions">
+        <a href="/signin/"   class="nav-button">Log In</a>
+        <a href="/register/" class="btn btn-primary">Sign Up</a>
+    </div>
+</nav>

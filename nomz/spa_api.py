@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import logging
+from datetime import timedelta
 
 from django.contrib.auth import login, logout
 from django.contrib.auth.forms import (
@@ -162,6 +163,20 @@ def auth_login(request):
             request.session["_2fa_user_id"] = user.id
             return JsonResponse({"requires_2fa": True, "authenticated": False})
         login(request, user)
+        # Force a success log entry if signal is flaky
+        from .models import LoginLog
+        from .signals import get_client_ip
+
+        LoginLog.objects.get_or_create(
+            user=user,
+            username=user.username,
+            timestamp__gte=timezone.now() - timedelta(seconds=5),
+            defaults={
+                "ip_address": get_client_ip(request),
+                "status": "Success",
+                "user_agent": request.META.get("HTTP_USER_AGENT", ""),
+            },
+        )
         return JsonResponse(session_payload(request))
 
     err_msg = "Invalid username or password."
@@ -345,7 +360,7 @@ def restaurant_photos_data(request):
 
     restaurant = Restaurant.objects.filter(owner=request.user).first()
     if not restaurant:
-        return JsonResponse({"restaurant_id": None, "photos": []})
+        return JsonResponse({"photos": []})
 
     photos = []
     for p in restaurant.photos.all():
@@ -504,12 +519,15 @@ def diner_account_api(request):
     u = request.user
     if request.method == "GET":
         review_count = Review.objects.filter(user=u, is_deleted=False).count()
+        pref = getattr(u, "preferences", None)
+        phone = getattr(pref, "phone_number", "") or ""
         return JsonResponse(
             {
                 "username": u.username,
                 "email": u.email or "",
                 "first_name": u.first_name or "",
                 "last_name": u.last_name or "",
+                "phone_number": phone,
                 "reviews_written": review_count,
             }
         )
@@ -519,13 +537,46 @@ def diner_account_api(request):
     except json.JSONDecodeError:
         return _json_error("Invalid JSON.")
 
+    # --- Username change (uniqueness enforced) ---
+    new_username = (body.get("username") or "").strip()
+    if new_username and new_username != u.username:
+        if len(new_username) > 150:
+            return _json_error("Username must be 150 characters or fewer.")
+        import re
+
+        if not re.match(r"^[\w.@+-]+$", new_username):
+            return _json_error(
+                "Username may only contain letters, digits, and @/./+/-/_."
+            )
+        from django.contrib.auth.models import User as AuthUser
+
+        if (
+            AuthUser.objects.filter(username__iexact=new_username)
+            .exclude(pk=u.pk)
+            .exists()
+        ):
+            return _json_error("That username is already taken.", status=409)
+        u.username = new_username
+
+    # --- Basic fields ---
     email = (body.get("email") or "").strip()
     if email:
         u.email = email
     u.first_name = (body.get("first_name") or "")[:150]
     u.last_name = (body.get("last_name") or "")[:150]
-    u.save(update_fields=["email", "first_name", "last_name"])
-    return JsonResponse({"success": True})
+    u.save(update_fields=["username", "email", "first_name", "last_name"])
+
+    # --- Phone number stored on UserPreference ---
+    phone = (body.get("phone_number") or "").strip()[:30]
+    try:
+        pref, _ = UserPreference.objects.get_or_create(user=u)
+        if hasattr(pref, "phone_number"):
+            pref.phone_number = phone
+            pref.save(update_fields=["phone_number"])
+    except Exception:
+        pass  # phone save is best-effort
+
+    return JsonResponse({"success": True, "username": u.username})
 
 
 # --- Admin JSON ---
@@ -552,6 +603,7 @@ def admin_dashboard_summary(request):
     ).count()
     pending_report_count = ModerationReport.objects.filter(status="PENDING").count()
     suspicious_count = LoginLog.objects.filter(is_suspicious=True).count()
+    total_logs = LoginLog.objects.count()
     flagged_content = (
         Review.objects.filter(is_flagged=True).count()
         + Restaurant.objects.filter(is_flagged=True).count()
@@ -568,11 +620,11 @@ def admin_dashboard_summary(request):
             "pending_reports": pending_report_count,
             "suspicious_accounts": suspicious_count,
             "flagged_content": flagged_content,
+            "total_logs": total_logs,
         }
     )
 
 
-@login_required(login_url="landing")
 @require_GET
 def admin_pending_approvals_data(request):
 
@@ -602,13 +654,21 @@ def admin_pending_approvals_data(request):
     results = []
     for u in pending_approvals:
         claim = claims_by_user_id.get(u.id)
+        res_name = "Unnamed Business"
+        if claim and claim.restaurant:
+            res_name = (
+                claim.restaurant.display_name
+                or claim.restaurant.name
+                or "Unnamed Business"
+            )
+
         results.append(
             {
                 "id": u.id,
                 "username": u.username,
                 "email": u.email or "",
                 "date_joined": u.date_joined.isoformat(),
-                "restaurant_name": claim.restaurant.name if claim else "",
+                "restaurant_name": res_name,
                 "business_email": (claim.business_email if claim else "") or "",
                 "claim_details": (claim.proof_details if claim else "") or "",
                 "has_pending_claim": claim is not None,
@@ -619,13 +679,25 @@ def admin_pending_approvals_data(request):
 
 
 def _serialize_admin_restaurant_account_row(u: User) -> dict:
-    restaurant = Restaurant.objects.filter(owner=u).only("name").first()
+    # Try owner first, then fallback to most recent approved claim
+    restaurant = Restaurant.objects.filter(owner=u).first()
+    if not restaurant:
+        claim = (
+            RestaurantOwnershipClaim.objects.filter(
+                claimant=u, status=RestaurantOwnershipClaim.STATUS_APPROVED
+            )
+            .select_related("restaurant")
+            .first()
+        )
+        if claim:
+            restaurant = claim.restaurant
+
     return {
         "id": u.id,
         "username": u.username,
         "email": u.email or "",
-        "date_joined": u.date_joined.isoformat(),
-        "restaurant_name": restaurant.name if restaurant else "",
+        "joined": u.date_joined.isoformat(),
+        "name": restaurant.name if restaurant else "Unnamed Business",
     }
 
 
@@ -686,11 +758,19 @@ def admin_approve_user_api(request, user_id):
         .first()
     )
 
+    notes = "Approved via SPA admin API."
+    try:
+        data = json.loads(request.body)
+        if data.get("notes"):
+            notes = data["notes"]
+    except json.JSONDecodeError:
+        pass
+
     if pending_claim:
         try:
             pending_claim.approve(
                 reviewer=request.user,
-                notes="Approved via SPA admin API.",
+                notes=notes,
             )
         except ValidationError as exc:
             return _json_error(str(exc), status=400)
@@ -699,9 +779,10 @@ def admin_approve_user_api(request, user_id):
         profile = user_to_approve.userprofile
         profile.is_approved = True
         profile.is_rejected = False
+        profile.role = "restaurant"  # Ensure role is set on approval
         profile.save()
 
-    return JsonResponse({"ok": True})
+    return JsonResponse({"ok": True, "status": "approved"})
 
 
 @csrf_exempt
@@ -719,10 +800,18 @@ def admin_reject_user_api(request, user_id):
         claimant=user_to_reject,
         status=RestaurantOwnershipClaim.STATUS_PENDING,
     )
+    notes = "Rejected via SPA admin API."
+    try:
+        data = json.loads(request.body)
+        if data.get("notes"):
+            notes = data["notes"]
+    except json.JSONDecodeError:
+        pass
+
     for claim in pending_claims:
         claim.reject(
             reviewer=request.user,
-            notes="Rejected via SPA admin API.",
+            notes=notes,
         )
 
     if hasattr(user_to_reject, "userprofile"):
@@ -734,7 +823,6 @@ def admin_reject_user_api(request, user_id):
     return JsonResponse({"ok": True})
 
 
-@login_required(login_url="landing")
 @require_GET
 def admin_moderation_data(request):
 
@@ -849,7 +937,6 @@ def admin_resolve_report_api(request, report_id):
     return JsonResponse({"ok": True})
 
 
-@login_required(login_url="landing")
 @require_GET
 def admin_users_data(request):
 
@@ -863,28 +950,52 @@ def admin_users_data(request):
         .select_related("userprofile")
         .order_by("-date_joined")
     )
-    from django.db.models import Exists, OuterRef
+    from django.db.models import Exists, OuterRef, Subquery, F, Value
+    from django.db.models.functions import Coalesce
+    from django.utils import timezone
 
-    suspicious_logs = LoginLog.objects.filter(
-        username=OuterRef("username"), is_user_suspicious=True
+    latest_log = LoginLog.objects.filter(username=OuterRef("username")).order_by(
+        "-timestamp"
     )
-    users = users.annotate(has_suspicious_activity=Exists(suspicious_logs))
+    users = (
+        users.annotate(
+            has_suspicious_activity=Exists(latest_log.filter(is_user_suspicious=True)),
+            last_login_at=Subquery(latest_log.values("timestamp")[:1]),
+            last_ip=Subquery(latest_log.values("ip_address")[:1]),
+        )
+        .annotate(
+            sort_date=Coalesce(
+                F("last_login_at"),
+                Value(timezone.make_aware(timezone.datetime(2000, 1, 1))),
+            )
+        )
+        .order_by("-sort_date", "-date_joined")
+    )
 
     payload = []
     for u in users:
-        role = (
-            getattr(u.userprofile, "role", None) if hasattr(u, "userprofile") else None
-        )
         payload.append(
             {
                 "id": u.id,
                 "username": u.username,
                 "email": u.email or "",
+                "account_type": (
+                    getattr(u.userprofile, "role", "diner")
+                    if hasattr(u, "userprofile")
+                    else "diner"
+                ),
                 "is_active": u.is_active,
-                "is_superuser": u.is_superuser,
                 "date_joined": u.date_joined.isoformat(),
-                "role": role,
+                "last_login": u.last_login_at.isoformat() if u.last_login_at else None,
+                "last_ip": u.last_ip or "N/A",
+                "review_count": getattr(u, "review_count", 0),
+                "report_count": getattr(u, "report_count", 0),
                 "has_suspicious_activity": getattr(u, "has_suspicious_activity", False),
+                "is_flagged": (
+                    getattr(u.userprofile, "is_flagged", False)
+                    if hasattr(u, "userprofile")
+                    else False
+                ),
             }
         )
     return JsonResponse({"count": len(payload), "results": payload})
@@ -910,7 +1021,6 @@ def admin_toggle_user_active_api(request, user_id):
     return JsonResponse({"ok": True, "is_active": user_to_toggle.is_active})
 
 
-@login_required(login_url="landing")
 @require_GET
 def admin_login_logs_data(request):
 
@@ -1012,6 +1122,7 @@ def restaurant_detail_data(request, restaurant_id):
         "is_flagged": restaurant.is_flagged,
         "is_owner_flagged": is_owner_flagged,
         "owner_id": owner_id,
+        "owner_username": restaurant.owner.username if restaurant.owner else None,
         "messaging_enabled": messaging_enabled,
         "composite_score": (
             float(restaurant.composite_score)
@@ -1113,10 +1224,7 @@ def _time_for_input(t) -> str:
 def _response_hours_display(t) -> str:
     if not t:
         return ""
-    s = t.strftime("%I:%M %p")
-    if s.startswith("0"):
-        s = s[1:]
-    return s
+    return t.strftime("%H:%M")
 
 
 def _unavailable_until_for_input(dt) -> str:
@@ -1174,9 +1282,22 @@ def _owner_visibility_rank(restaurant: Restaurant) -> tuple[int | None, int]:
 def _serialize_owner_restaurant(restaurant: Restaurant) -> dict:
     rank, total_visible = _owner_visibility_rank(restaurant)
     review_count = restaurant.reviews.filter(is_deleted=False).count()
+    # Derive messaging hours display
+    rhs = _response_hours_display(restaurant.response_hours_start)
+    rhe = _response_hours_display(restaurant.response_hours_end)
+    if rhs and rhe:
+        messaging_hours_label = f"{rhs} – {rhe}"
+    elif rhs:
+        messaging_hours_label = f"From {rhs}"
+    elif rhe:
+        messaging_hours_label = f"Until {rhe}"
+    else:
+        messaging_hours_label = "Not set (always available)"
+
     return {
         "id": restaurant.id,
         "name": restaurant.name,
+        "username": restaurant.owner.username if restaurant.owner else "",
         "description": restaurant.description or "",
         "cuisine_type": restaurant.cuisine_type,
         "price_range": restaurant.price_range,
@@ -1186,7 +1307,9 @@ def _serialize_owner_restaurant(restaurant: Restaurant) -> dict:
         "phone": restaurant.phone or "",
         "website": restaurant.website or "",
         "email": restaurant.email or "",
+        "is_active": restaurant.is_active,
         "messaging_enabled": restaurant.messaging_enabled,
+        "messaging_hours_display": messaging_hours_label,
         "response_hours_start": _response_hours_display(
             restaurant.response_hours_start
         ),
@@ -1254,7 +1377,7 @@ def _search_results_payload(request):
 
     base_restaurants = Restaurant.objects.filter(
         Q(owner__userprofile__is_approved=True) | Q(owner__isnull=True), is_active=True
-    )
+    ).select_related("owner")
     if query:
         base_restaurants = base_restaurants.filter(
             Q(name__icontains=query)
@@ -1303,6 +1426,8 @@ def _search_results_payload(request):
                 "price_label": restaurant.get_price_range_display(),
                 "rating_score": restaurant.grade_score_latest,
                 "is_flagged": restaurant.is_flagged,
+                "has_owner": restaurant.owner_id is not None,
+                "messaging_enabled": restaurant.messaging_enabled,
             }
         )
 
@@ -1438,13 +1563,41 @@ def restaurant_profile_api(request):
     existing = Restaurant.objects.filter(owner=request.user).first()
 
     if request.method == "GET":
+        profile = getattr(request.user, "userprofile", None)
+        account_status = {
+            "is_approved": getattr(profile, "is_approved", False),
+            "is_rejected": getattr(profile, "is_rejected", False),
+            "date_joined": request.user.date_joined.isoformat(),
+        }
         if not existing:
-            return JsonResponse({"has_restaurant": False, **base_choices})
+            # User wants empty restaurants to still display the dashboard shell natively
+            return JsonResponse(
+                {
+                    "has_restaurant": True,
+                    **base_choices,
+                    "restaurant": {
+                        "name": "",
+                        "username": request.user.username,
+                        "email": request.user.email,
+                        "phone": "",
+                        "address": "",
+                        "cuisine_type": "",
+                        "price_range": "",
+                        "hours_open": "",
+                        "hours_close": "",
+                        "messaging_hours_display": "",
+                        "composite_score": None,
+                        "inspection_rating": None,
+                    },
+                    "account_status": account_status,
+                }
+            )
         return JsonResponse(
             {
                 "has_restaurant": True,
                 **base_choices,
                 "restaurant": _serialize_owner_restaurant(existing),
+                "account_status": account_status,
             }
         )
 
@@ -1554,11 +1707,15 @@ def restaurant_communication_api(request):
         return JsonResponse(
             {
                 "messaging_enabled": restaurant.messaging_enabled,
-                "response_hours_start": _response_hours_display(
-                    restaurant.response_hours_start
+                "response_hours_start": (
+                    restaurant.response_hours_start.isoformat()
+                    if restaurant.response_hours_start
+                    else ""
                 ),
-                "response_hours_end": _response_hours_display(
-                    restaurant.response_hours_end
+                "response_hours_end": (
+                    restaurant.response_hours_end.isoformat()
+                    if restaurant.response_hours_end
+                    else ""
                 ),
             }
         )
@@ -1592,6 +1749,190 @@ def restaurant_communication_api(request):
     if "__all__" in form.errors:
         errors["__all__"] = [str(e) for e in form.errors["__all__"]]
     return JsonResponse({"success": False, "errors": errors}, status=400)
+
+
+# ---------------------------------------------------------------------------
+#  Restaurant performance metrics
+# ---------------------------------------------------------------------------
+
+
+@login_required(login_url="landing")
+@require_GET
+def restaurant_performance_api(request):
+    """Return composite score breakdown, history and review params for the restaurant owner."""
+    if not _is_restaurant_owner(request.user):
+        return _json_error("Restaurant owners only.", status=403)
+
+    restaurant = Restaurant.objects.filter(owner=request.user).first()
+    if not restaurant:
+        # Fallback to an empty shell so empty accounts see dashes but retain the layout structure
+        return JsonResponse(
+            {
+                "has_restaurant": True,
+                "composite_score": None,
+                "inspection_rating": None,
+                "review_count": 0,
+                "citywide_rank": None,
+                "citywide_total": None,
+                "approx_percentile": None,
+                "breakdown": [
+                    {
+                        "label": "User Experience Signal",
+                        "weight": 20,
+                        "score": None,
+                        "description": "0 review(s) on Nomz (detail breakdown is maintained server-side for the composite score).",
+                    },
+                    {
+                        "label": "Inspection & Hygiene",
+                        "weight": 20,
+                        "score": None,
+                        "description": "Grade N/A | Critical 0 | Non-critical 0 | Weighted contribution: —",
+                    },
+                    {
+                        "label": "Price-to-Value Fit",
+                        "weight": 20,
+                        "score": None,
+                        "description": "Derived from value ratings against expected value for price tier. | Weighted contribution: —",
+                    },
+                    {
+                        "label": "Operational Reliability",
+                        "weight": 40,
+                        "score": None,
+                        "description": "Based on profile status, temporary availability, and metadata quality. | Weighted contribution: —",
+                    },
+                ],
+                "history": [],
+                "review_params": {},
+            }
+        )
+
+    from nomz.models import CompositeScoreHistory
+    from django.db.models import Avg
+
+    latest_history = (
+        CompositeScoreHistory.objects.filter(restaurant=restaurant)
+        .order_by("-calculated_at")
+        .first()
+    )
+
+    rc = float(latest_history.review_component_score or 0) if latest_history else None
+    ic = (
+        float(latest_history.inspection_component_score or 0)
+        if latest_history
+        else None
+    )
+    pv = float(latest_history.price_value_score or 0) if latest_history else None
+    op = float(latest_history.operational_score or 0) if latest_history else None
+    review_count = (
+        latest_history.review_count
+        if latest_history and latest_history.review_count
+        else 0
+    )
+    grade = restaurant.grade_latest or "N/A"
+
+    breakdown = [
+        {
+            "label": "User Experience Signal",
+            "weight": 20,
+            "score": round(rc, 1) if rc is not None else None,
+            "description": (
+                f"{review_count} review(s) on Nomz (detail breakdown is maintained"
+                " server-side for the composite score)."
+            ),
+        },
+        {
+            "label": "Inspection & Hygiene",
+            "weight": 20,
+            "score": round(ic, 1) if ic is not None else None,
+            "description": (
+                f"Grade {grade} | Critical 0 | Non-critical 0"
+                f" | Weighted contribution: {round(ic * 0.20, 2) if ic is not None else '—'}"
+            ),
+        },
+        {
+            "label": "Price-to-Value Fit",
+            "weight": 20,
+            "score": round(pv, 1) if pv is not None else None,
+            "description": (
+                "Derived from value ratings against expected value for price tier."
+                f" | Weighted contribution: {round(pv * 0.20, 2) if pv is not None else '—'}"
+            ),
+        },
+        {
+            "label": "Operational Reliability",
+            "weight": 40,
+            "score": round(op, 1) if op is not None else None,
+            "description": (
+                "Based on profile status, temporary availability, and metadata quality."
+                f" | Weighted contribution: {round(op * 0.40, 2) if op is not None else '—'}"
+            ),
+        },
+    ]
+
+    history_qs = (
+        CompositeScoreHistory.objects.filter(restaurant=restaurant)
+        .order_by("calculated_at")
+        .values("calculated_at", "composite_score")[:10]
+    )
+    history_data = [
+        {
+            "date": (
+                h["calculated_at"].strftime("%b %d, %Y")
+                if h.get("calculated_at")
+                else ""
+            ),
+            "score": (
+                round(float(h["composite_score"]), 1)
+                if h.get("composite_score") is not None
+                else None
+            ),
+        }
+        for h in history_qs
+    ]
+
+    rank, total = _owner_visibility_rank(restaurant)
+    approx_percentile = None
+    if rank and total and total > 0:
+        approx_percentile = round(((total - rank) / total) * 100)
+
+    reviews = restaurant.reviews.filter(is_deleted=False)
+    review_count_real = reviews.count()
+    review_params = None
+    if review_count_real > 0:
+        agg = reviews.aggregate(
+            food=Avg("food_quality_rating"),
+            service=Avg("service_quality_rating"),
+            ambience=Avg("ambience_rating"),
+            location=Avg("location_rating"),
+            value=Avg("value_rating"),
+            cleanliness=Avg("cleanliness_rating"),
+        )
+        review_params = {
+            k: round(float(v or 0), 1) for k, v in agg.items() if v is not None
+        }
+
+    return JsonResponse(
+        {
+            "has_restaurant": True,
+            "composite_score": (
+                float(restaurant.composite_score)
+                if restaurant.composite_score is not None
+                else None
+            ),
+            "inspection_rating": (
+                float(restaurant.grade_score_latest)
+                if restaurant.grade_score_latest is not None
+                else None
+            ),
+            "review_count": review_count_real,
+            "citywide_rank": rank,
+            "citywide_total": total,
+            "approx_percentile": approx_percentile,
+            "breakdown": breakdown,
+            "history": history_data,
+            "review_params": review_params,
+        }
+    )
 
 
 # ---------------------------------------------------------------------------

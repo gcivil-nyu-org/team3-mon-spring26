@@ -1,0 +1,337 @@
+{% extends 'nomz/base.html' %}
+{% block navbar %}{% endblock %}
+{% block footer %}{% endblock %}
+{% block main_layout %}
+<style>
+    nav.navbar { display: none !important; }
+    body > footer { display: none !important; }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    @keyframes float {
+        0%, 100% { transform: translate(0,0) scale(1); }
+        50% { transform: translate(-20px,20px) scale(1.05); }
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(12px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── DEFINITIVE FULL-WIDTH OVERRIDES ── */
+    body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: linear-gradient(135deg, var(--paper) 0%, rgba(200,169,110,0.12) 50%, var(--paper) 100%) !important;
+        font-family: var(--font-sans);
+        min-height: 100vh;
+        overflow: hidden;
+    }
+
+    .layout-wrapper {
+        display: flex; flex-direction: column; height: 100vh;
+        background: transparent;
+        position: relative;
+    }
+
+    /* Floating Gradient Orbs */
+    .dashboard-orbs div {
+        position: absolute;
+        border-radius: 50%;
+        pointer-events: none;
+    }
+    .orb-1 { top: 10%; left: 5%; width: 400px; height: 400px; background: radial-gradient(circle, rgba(212, 43, 43, 0.15) 0%, transparent 70%); animation: float 15s ease-in-out infinite; }
+    .orb-2 { bottom: 15%; right: 8%; width: 500px; height: 500px; background: radial-gradient(circle, rgba(212, 43, 43, 0.1) 0%, transparent 70%); animation: float 20s ease-in-out infinite reverse; }
+    .orb-3 { top: 50%; left: 50%; width: 350px; height: 350px; background: radial-gradient(circle, rgba(212, 43, 43, 0.08) 0%, transparent 70%); animation: float 25s ease-in-out infinite; transform: translate(-50%, -50%); }
+
+    /* ── 3-column layout ── */
+    .main-content {
+        flex: 1; display: flex; gap: 1.25rem;
+        padding: 1.25rem 1.5rem; overflow: hidden;
+        position: relative; z-index: 10;
+        max-width: 1400px; margin: 0 auto; width: 100%;
+    }
+
+    /* Glassmorphism panel */
+    .glass-panel {
+        background: rgba(255,255,255,0.7); backdrop-filter: blur(20px);
+        border: 1px solid rgba(212, 43, 43,0.15); border-radius: 24px;
+        display: flex; flex-direction: column; overflow: hidden;
+        box-shadow: 0 4px 24px rgba(212, 43, 43,0.06);
+    }
+
+    /* ── Sidebar ── */
+    .sidebar { width: 260px; flex-shrink: 0; }
+    .sidebar-header {
+        padding: 1rem 1.25rem; border-bottom: 1px solid rgba(212, 43, 43,0.1);
+        display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+    }
+    .sidebar-title { color: var(--red); font-size: 15px; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 6px; }
+    .sidebar-btn-group { display: flex; gap: 6px; }
+    .sidebar-icon-btn {
+        padding: 5px 10px; background: var(--red); color: white; border: none;
+        border-radius: 9px; font-size: 13px; cursor: pointer;
+        font-family: var(--font-sans); font-weight: 600;
+        transition: background 0.2s; display: flex; align-items: center; gap: 4px;
+    }
+    .sidebar-icon-btn:hover { background: #b82020; }
+
+    .conv-list { flex: 1; overflow-y: auto; }
+    .conv-list::-webkit-scrollbar { width: 4px; }
+    .conv-list::-webkit-scrollbar-thumb { background: rgba(212, 43, 43,0.2); border-radius: 4px; }
+
+    .conv-item {
+        display: flex; align-items: center; gap: 10px;
+        padding: 10px 1.25rem; cursor: pointer;
+        border-bottom: 1px solid rgba(212, 43, 43,0.06);
+        transition: background 0.2s; animation: fadeIn 0.3s ease both;
+        text-decoration: none; color: inherit;
+    }
+    .conv-item:hover { background: rgba(212, 43, 43,0.06); }
+    .conv-item.active { background: rgba(212, 43, 43,0.1); border-left: 3px solid var(--red); }
+    .conv-avatar {
+        width: 38px; height: 38px; flex-shrink: 0; border-radius: 50%;
+        background: linear-gradient(135deg, rgba(212, 43, 43,0.15), rgba(212, 43, 43,0.3));
+        display: flex; align-items: center; justify-content: center;
+        color: var(--red); font-weight: 700; font-size: 14px;
+        border: 2px solid rgba(212, 43, 43,0.2);
+    }
+    .conv-info { flex: 1; min-width: 0; }
+    .conv-name { font-size: 13px; font-weight: 600; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .conv-preview { font-size: 11px; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+
+    .empty-sidebar { padding: 2rem; text-align: center; color: #aaa; font-size: 13px; }
+
+    /* ── Chat panel (welcome state) ── */
+    .chat-area { flex: 1; min-width: 0; }
+    .welcome-wrap {
+        flex: 1; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; text-align: center; gap: 1rem; padding: 3rem;
+    }
+    .welcome-icon {
+        width: 72px; height: 72px;
+        background: linear-gradient(135deg, rgba(212, 43, 43,0.1), rgba(212, 43, 43,0.2));
+        border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--red);
+    }
+    .welcome-wrap h3 { color: #333; font-size: 20px; font-weight: 700; margin: 0; }
+    .welcome-wrap p { color: #888; font-size: 13px; margin: 0; max-width: 280px; line-height: 1.7; }
+    .welcome-hints { display: flex; gap: 1rem; margin-top: 0.5rem; }
+    .hint-chip {
+        display: flex; align-items: center; gap: 8px;
+        padding: 8px 16px; background: rgba(212, 43, 43,0.08);
+        border: 1px solid rgba(212, 43, 43,0.15); border-radius: 12px;
+        font-size: 12px; color: var(--red); font-weight: 600; cursor: pointer;
+        transition: all 0.2s;
+    }
+    .hint-chip:hover { background: rgba(212, 43, 43,0.15); }
+
+    /* ── Right panel ── */
+    .features-area { width: 240px; flex-shrink: 0; display: flex; flex-direction: column; gap: 1rem; overflow-y: auto; }
+    .features-area::-webkit-scrollbar { width: 4px; }
+    .features-area::-webkit-scrollbar-thumb { background: rgba(212, 43, 43,0.2); border-radius: 4px; }
+
+    .right-card {
+        background: rgba(255,255,255,0.7); backdrop-filter: blur(20px);
+        border: 1px solid rgba(212, 43, 43,0.15); border-radius: 20px;
+        overflow: hidden; box-shadow: 0 4px 16px rgba(212, 43, 43,0.06); flex-shrink: 0;
+    }
+    .right-card-header {
+        padding: 8px 14px; background: var(--red); color: white;
+        font-size: 13px; font-weight: 700; font-family: var(--font-sans);
+    }
+    .right-card-body { padding: 14px; }
+    .right-placeholder { font-size: 12px; color: #aaa; text-align: center; line-height: 1.6; }
+
+    /* New chat modal */
+    .modal-overlay {
+        display: none; position: fixed; inset: 0; z-index: 1000;
+        background: rgba(0,0,0,0.3); align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+        background: white; border-radius: 20px; padding: 24px;
+        width: 380px; max-width: 94vw;
+        box-shadow: 0 8px 40px rgba(0,0,0,0.15); animation: fadeIn 0.25s ease-out;
+    }
+    .modal-box h3 { margin: 0 0 14px; color: var(--red); font-size: 16px; font-weight: 700; }
+    .modal-input {
+        width: 100%; padding: 10px 14px; border: 1px solid rgba(212, 43, 43,0.2);
+        border-radius: 12px; font-size: 13px; font-family: var(--font-sans);
+        outline: none; margin-bottom: 8px; box-sizing: border-box; transition: border-color 0.2s;
+    }
+    .modal-input:focus { border-color: var(--red); }
+    .modal-err { color: var(--red); font-size: 12px; margin-bottom: 8px; min-height: 16px; }
+    .modal-actions { display: flex; gap: 8px; }
+    .modal-cancel { flex: 1; padding: 10px; background: #f5f5f5; border: none; border-radius: 10px; font-family: var(--font-sans); font-size: 13px; font-weight: 600; color: #666; cursor: pointer; }
+    .modal-cancel:hover { background: #ebebeb; }
+    .modal-ok { flex: 2; padding: 10px; background: var(--red); border: none; border-radius: 10px; font-family: var(--font-sans); font-size: 13px; font-weight: 600; color: white; cursor: pointer; transition: background 0.2s; }
+    .modal-ok:hover { background: #b82020; }
+
+    .footer { text-align: center; padding: 10px; font-size: 12px; color: #bbb; flex-shrink: 0; z-index: 10; }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; } 50% { opacity: 0.4; }
+    }
+    .loading-dots { display: flex; gap: 5px; align-items: center; justify-content: center; padding: 2rem; }
+    .loading-dots span { width: 8px; height: 8px; background: var(--red); border-radius: 50%; animation: pulse 1.2s infinite; }
+    .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+</style>
+
+<div class="layout-wrapper">
+    <div class="dashboard-orbs">
+        <div class="orb-1"></div>
+        <div class="orb-2"></div>
+        <div class="orb-3"></div>
+    </div>
+
+    {% include 'nomz/components/premium_nav.html' %}
+
+    <!-- 3-column layout -->
+    <div class="main-content">
+        <!-- LEFT: Conversations sidebar -->
+        <div class="glass-panel sidebar">
+            <div class="sidebar-header">
+                <h2 class="sidebar-title">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    Conversations
+                </h2>
+                <div class="sidebar-btn-group">
+                    <button class="sidebar-icon-btn" onclick="openNewChatModal()" title="New Chat" style="padding:5px 12px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    </button>
+                    <button class="sidebar-icon-btn" onclick="openNewChatModal()" title="New Chat">+</button>
+                </div>
+            </div>
+            <div class="conv-list" id="conv-list">
+                <div class="loading-dots"><span></span><span></span><span></span></div>
+            </div>
+        </div>
+
+        <!-- MIDDLE: Welcome state -->
+        <div class="glass-panel chat-area">
+            <div class="welcome-wrap">
+                <div class="welcome-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                </div>
+                <h3>Connect with your friends!</h3>
+                <p>Share restaurant recommendations and build your Together List. Choose an action from the sidebar to start.</p>
+                <div class="welcome-hints">
+                    <div class="hint-chip" onclick="openNewChatModal()">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        New Chat
+                    </div>
+                    <div class="hint-chip" onclick="openNewChatModal()">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        Group Chat
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT: Feature placeholders -->
+        <div class="features-area">
+            <div class="right-card">
+                <div class="right-card-header">Recommend Restaurant</div>
+                <div class="right-card-body">
+                    <p class="right-placeholder">Select a conversation to recommend a restaurant to a friend.</p>
+                </div>
+            </div>
+            <div class="right-card">
+                <div class="right-card-header">Together List</div>
+                <div class="right-card-body">
+                    <p class="right-placeholder">Select a conversation to view and manage your Together List.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">made with ❤️ for food lovers 🍰</div>
+</div>
+
+<!-- New Chat Modal -->
+<div class="modal-overlay" id="new-chat-modal">
+    <div class="modal-box">
+        <h3>Start a Chat</h3>
+        <input class="modal-input" id="nc-username" placeholder="Friend's username…" onkeydown="if(event.key==='Enter') startNewChat()"/>
+        <div class="modal-err" id="nc-err"></div>
+        <div class="modal-actions">
+            <button class="modal-cancel" onclick="closeModal()">Cancel</button>
+            <button class="modal-ok" onclick="startNewChat()">Start Chat</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function csrf() {
+    const c = document.cookie.split('; ').find(r => r.startsWith('csrftoken='));
+    return c ? c.split('=')[1] : '';
+}
+async function api(url, opts = {}) {
+    return fetch(url, { ...opts, credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf(), ...(opts.headers||{}) } });
+}
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* Load conversations */
+async function loadConvs() {
+    try {
+        const r = await api('/api/friends-chat/');
+        const d = await r.json();
+        const convs = d.conversations || [];
+        const list = document.getElementById('conv-list');
+        if (!convs.length) {
+            list.innerHTML = '<div class="empty-sidebar">No conversations yet.<br>Tap <b>+ New</b> to start one!</div>';
+            return;
+        }
+        list.innerHTML = convs.map((c, i) => {
+            const name = esc(c.name || 'Chat');
+            const preview = esc((c.last_message || '').substring(0, 40));
+            const initial = (c.name || '?').charAt(0).toUpperCase();
+            const href = c.is_group
+                ? `/friends-chat/group/${c.id}/`
+                : `/friends-chat/${esc(c.other_username || c.name)}/`;
+            return `<a href="${href}" class="conv-item" style="animation-delay:${i*0.04}s">
+                <div class="conv-avatar">${initial}</div>
+                <div class="conv-info">
+                    <div class="conv-name">${name}</div>
+                    <div class="conv-preview">${preview || '—'}</div>
+                </div>
+            </a>`;
+        }).join('');
+    } catch(e) {
+        document.getElementById('conv-list').innerHTML = '<div class="empty-sidebar">Could not load conversations.</div>';
+    }
+}
+
+/* Modal */
+function openNewChatModal() {
+    document.getElementById('new-chat-modal').classList.add('open');
+    document.getElementById('nc-username').value = '';
+    document.getElementById('nc-err').textContent = '';
+    setTimeout(() => document.getElementById('nc-username').focus(), 100);
+}
+function closeModal() { document.getElementById('new-chat-modal').classList.remove('open'); }
+document.getElementById('new-chat-modal').addEventListener('click', function(e) { if(e.target===this) closeModal(); });
+
+async function startNewChat() {
+    const username = document.getElementById('nc-username').value.trim();
+    if (!username) { document.getElementById('nc-err').textContent = 'Enter a username.'; return; }
+    try {
+        const r = await api('/api/friends-chat/', { method: 'POST', body: JSON.stringify({ username }) });
+        const d = await r.json();
+        if (r.ok) {
+            const conv = d.conversation;
+            closeModal();
+            if (conv) { window.location.href = `/friends-chat/${conv.other_username || username}/`; }
+            else { await loadConvs(); }
+        } else { document.getElementById('nc-err').textContent = d.error || 'Could not start chat.'; }
+    } catch(_) { document.getElementById('nc-err').textContent = 'Network error.'; }
+}
+
+async function handleLogout() {
+    await api('/api/auth/logout/', { method: 'POST' });
+    window.location.href = '/home/';
+}
+
+loadConvs();
+</script>
+{% endblock %}

@@ -1,0 +1,853 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>nomz - Restaurant Map</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossorigin=""/>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""></script>
+
+    <link rel="stylesheet" href="{% static 'nomz/css/main.css' %}">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Allow the page to grow and scroll (flex+flex:1 on main was clipping past the viewport). */
+        html {
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background: linear-gradient(135deg, var(--paper) 0%, rgba(200,169,110,0.12) 50%, var(--paper) 100%);
+            min-height: 100vh;
+            min-height: 100dvh;
+            overflow-y: auto;
+        }
+
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--red);
+            font-family: var(--font-sans);
+        }
+
+        /* Main: holds one row — left panel (filters + results), right map */
+        main {
+            width: 100%;
+            max-width: 100%;
+            padding: 1rem 1.25rem 1.5rem 1.25rem;
+        }
+
+        .map-page-layout {
+            display: flex;
+            flex-direction: row;
+            align-items: stretch;
+            gap: 1rem;
+            min-height: 320px;
+            height: clamp(320px, calc(100dvh - 6rem), 760px);
+        }
+
+        .sidebar-panel {
+            flex: 1 1 0;
+            min-width: 15rem;
+            max-width: min(22rem, 36vw);
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .sidebar-panel .filter-grid {
+            grid-template-columns: 1fr;
+            gap: 0.65rem;
+            margin-bottom: 0.65rem;
+        }
+
+        .sidebar-panel .filter-grid-3 {
+            grid-template-columns: 1fr;
+            gap: 0.65rem;
+            align-items: stretch;
+        }
+
+        .sidebar-panel .button-group {
+            margin-top: 0.75rem;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .sidebar-panel .btn {
+            flex: none;
+        }
+
+        /* Filters Section - Glass Card */
+        .filters-container {
+            width: 100%;
+            padding: 1rem 1.1rem;
+            border-radius: 16px;
+            background: rgba(255,255,255,0.75);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(212, 43, 43,0.15);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.9);
+            margin-bottom: 0;
+            flex-shrink: 0;
+        }
+
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .filter-grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            align-items: end;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .filter-label {
+            display: block;
+            font-size: 0.7rem;
+            font-weight: 600;
+            margin-bottom: 0.4rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            font-family: var(--font-sans);
+        }
+
+        .filter-input, .filter-select {
+            width: 100%;
+            padding: 0.6rem 0.875rem;
+            border: 1px solid rgba(212, 43, 43,0.2);
+            border-radius: 12px;
+            font-size: 0.8125rem;
+            font-family: var(--font-sans);
+            background: rgba(255,255,255,0.85);
+            transition: all 0.2s;
+            color: #333;
+        }
+
+        .filter-input:focus, .filter-select:focus {
+            outline: none;
+            border-color: var(--red);
+            box-shadow: 0 0 0 3px rgba(212, 43, 43,0.1);
+            background: white;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8125rem;
+            color: #666;
+            cursor: pointer;
+            font-family: var(--font-sans);
+            font-weight: 500;
+        }
+
+        .checkbox-input {
+            cursor: pointer;
+            accent-color: var(--red);
+            width: 15px;
+            height: 15px;
+        }
+
+        .error-message {
+            font-size: 0.75rem;
+            margin-top: 0.5rem;
+            color: #b91c1c;
+            font-family: var(--font-sans);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.25rem;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 0.65rem 1rem;
+            border-radius: 14px;
+            font-size: 0.8125rem;
+            font-weight: 600;
+            border: none;
+            font-family: var(--font-sans);
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .btn-reset {
+            background: linear-gradient(135deg, rgba(212, 43, 43,0.7) 0%, rgba(212, 43, 43,0.85) 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(212, 43, 43,0.2);
+        }
+        .btn-reset:hover {
+            background: linear-gradient(135deg, var(--red) 0%, #b82020 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(212, 43, 43,0.3);
+        }
+
+        .btn-apply {
+            background: linear-gradient(135deg, #5a6c7d 0%, #4a5c6d 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(90,108,125,0.2);
+        }
+        .btn-apply:hover {
+            background: linear-gradient(135deg, #4a5c6d 0%, #3a4c5d 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(90,108,125,0.3);
+        }
+        .btn-apply:disabled {
+            cursor: wait;
+            opacity: 0.7;
+        }
+
+        /* Map — right column */
+        .map-container {
+            flex: 1 1 0;
+            min-width: 0;
+            align-self: stretch;
+            border-radius: 20px;
+            overflow: hidden;
+            border: 1px solid rgba(212, 43, 43,0.15);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+            min-height: 280px;
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            min-height: 280px;
+        }
+
+        .map-container .leaflet-container {
+            height: 100%;
+            min-height: 280px;
+        }
+
+        /* Restaurant List — inside left sidebar */
+        .restaurant-list-container {
+            width: 100%;
+            flex: 1 1 0;
+            min-height: 0;
+            border-radius: 16px;
+            overflow: hidden;
+            background: rgba(255,255,255,0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(212, 43, 43,0.15);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.06);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .list-header {
+            padding: 0.875rem 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(212, 43, 43,0.1);
+            background: rgba(255,255,255,0.4);
+        }
+
+        .list-title {
+            font-size: 0.875rem;
+            font-weight: 700;
+            font-family: var(--font-sans);
+            color: var(--red);
+        }
+
+        .list-count {
+            font-size: 0.75rem;
+            font-family: var(--font-sans);
+            color: #bbb;
+            font-weight: 500;
+        }
+
+        .list-scroll {
+            flex: 1;
+            overflow-y: auto;
+        }
+        .list-scroll::-webkit-scrollbar { width: 4px; }
+        .list-scroll::-webkit-scrollbar-track { background: transparent; }
+        .list-scroll::-webkit-scrollbar-thumb { background: rgba(212, 43, 43,0.2); border-radius: 4px; }
+
+        .list-help {
+            padding: 0.5rem 1rem;
+            font-size: 0.75rem;
+            font-family: var(--font-sans);
+            color: #bbb;
+        }
+
+        .legend {
+            padding: 0.5rem 1rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem 0.75rem;
+            font-size: 0.7rem;
+            font-family: var(--font-sans);
+            border-top: 1px solid rgba(212, 43, 43,0.08);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .legend-dot {
+            width: 0.75rem;
+            height: 0.75rem;
+            border-radius: 50%;
+        }
+
+        .legend-label {
+            color: #888;
+        }
+
+        .restaurant-item {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-bottom: 1px solid rgba(212, 43, 43,0.07);
+        }
+
+        .restaurant-item:hover {
+            background: rgba(212, 43, 43,0.07);
+            padding-left: 1.25rem;
+        }
+
+        .restaurant-header {
+            display: flex;
+            align-items: start;
+            justify-content: space-between;
+            margin-bottom: 0.25rem;
+        }
+
+        .restaurant-name {
+            font-size: 0.8rem;
+            font-weight: 600;
+            font-family: var(--font-sans);
+            color: #333;
+        }
+
+        .restaurant-score {
+            font-size: 0.75rem;
+            font-weight: 700;
+            font-family: var(--font-sans);
+            color: var(--red);
+            white-space: nowrap;
+            margin-left: 0.5rem;
+        }
+
+        .restaurant-address {
+            font-size: 0.72rem;
+            font-family: var(--font-sans);
+            color: #888;
+            margin-bottom: 0.2rem;
+        }
+
+        .restaurant-info {
+            font-size: 0.72rem;
+            font-family: var(--font-sans);
+            color: #bbb;
+        }
+
+        /* Responsive: map on top, sidebar below */
+        @media (max-width: 768px) {
+            main {
+                padding: 0.75rem;
+            }
+            .map-page-layout {
+                flex-direction: column-reverse;
+                height: auto;
+                min-height: 0;
+            }
+            .sidebar-panel {
+                width: 100%;
+                min-width: 0;
+                max-width: none;
+            }
+            .sidebar-panel .filter-grid,
+            .sidebar-panel .filter-grid-3 {
+                grid-template-columns: 1fr;
+            }
+            .sidebar-panel .button-group {
+                flex-direction: row;
+            }
+            .sidebar-panel .btn {
+                flex: 1;
+            }
+            .map-container {
+                width: 100%;
+                min-height: 300px;
+                height: min(48dvh, 420px);
+            }
+            #map,
+            .map-container .leaflet-container {
+                min-height: 300px;
+            }
+            .restaurant-list-container {
+                min-height: 200px;
+                max-height: min(42dvh, 380px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    {% include 'nomz/components/premium_nav.html' %}
+
+    <!-- Main: left = filters + results, right = map -->
+    <main>
+        <div class="map-page-layout">
+        <aside class="sidebar-panel" aria-label="Filters and restaurant results">
+        <!-- Filters Section -->
+        <div class="filters-container">
+            <div class="filter-grid">
+                <!-- Search -->
+                <div class="filter-group">
+                    <label class="filter-label">Search</label>
+                    <input
+                        type="text"
+                        id="search"
+                        class="filter-input"
+                        placeholder="Name, street, or ZIP"
+                    >
+                </div>
+
+                <!-- Borough -->
+                <div class="filter-group">
+                    <label class="filter-label">Borough</label>
+                    <select id="borough" class="filter-select">
+                        <option value="all">All Boroughs</option>
+                        <option value="manhattan">Manhattan</option>
+                        <option value="brooklyn">Brooklyn</option>
+                        <option value="queens">Queens</option>
+                        <option value="bronx">The Bronx</option>
+                        <option value="staten">Staten Island</option>
+                    </select>
+                </div>
+
+                <!-- Cuisine -->
+                <div class="filter-group">
+                    <label class="filter-label">Cuisine</label>
+                    <select id="cuisine" class="filter-select">
+                        <option value="all">All cuisines</option>
+                        <option value="italian">Italian</option>
+                        <option value="chinese">Chinese</option>
+                        <option value="mexican">Mexican</option>
+                        <option value="japanese">Japanese</option>
+                        <option value="american">American</option>
+                    </select>
+                </div>
+
+                <!-- Min Score -->
+                <div class="filter-group">
+                    <label class="filter-label">Min Score</label>
+                    <input
+                        type="number"
+                        id="minScore"
+                        class="filter-input"
+                        placeholder="0"
+                    >
+                </div>
+            </div>
+
+            <div class="filter-grid-3">
+                <!-- Max Score -->
+                <div class="filter-group">
+                    <label class="filter-label">Max Score</label>
+                    <input
+                        type="number"
+                        id="maxScore"
+                        class="filter-input"
+                        placeholder="100"
+                    >
+                </div>
+
+                <!-- Sort By -->
+                <div class="filter-group">
+                    <label class="filter-label">Sort by</label>
+                    <select id="sortBy" class="filter-select">
+                        <option value="composite-high-low">Composite: High → Low</option>
+                        <option value="composite-low-high">Composite: Low → High</option>
+                        <option value="name-a-z">Name: A → Z</option>
+                        <option value="name-z-a">Name: Z → A</option>
+                    </select>
+                </div>
+
+                <!-- Map Scope Checkbox -->
+                <div class="filter-group">
+                    <label class="checkbox-label">
+                        <input
+                            type="checkbox"
+                            id="onlyVisibleArea"
+                            class="checkbox-input"
+                        >
+                        Only visible map area
+                    </label>
+                </div>
+            </div>
+
+            <!-- Error Message -->
+            <div id="errorMessage" class="error-message" style="display: none;"></div>
+
+            <!-- Buttons -->
+            <div class="button-group">
+                <button class="btn btn-reset" onclick="resetFilters()">Reset</button>
+                <button class="btn btn-apply" id="applyBtn" onclick="applyFilters()">Apply Filters</button>
+            </div>
+        </div>
+
+            <!-- Restaurant List -->
+            <div class="restaurant-list-container">
+                <!-- Header -->
+                <div class="list-header">
+                    <h3 class="list-title">Nearby restaurants</h3>
+                    <span class="list-count" id="resultCount">0 results</span>
+                </div>
+
+                <!-- Restaurant List -->
+                <div class="list-scroll">
+                    <p class="list-help">Click a row or marker to view details.</p>
+
+                    <!-- Legend -->
+                    <div class="legend">
+                        <span class="legend-item">
+                            <span class="legend-dot" style="background-color: #22c55e;"></span>
+                            <span class="legend-label">90+</span>
+                        </span>
+                        <span class="legend-item">
+                            <span class="legend-dot" style="background-color: #eab308;"></span>
+                            <span class="legend-label">80-89</span>
+                        </span>
+                        <span class="legend-item">
+                            <span class="legend-dot" style="background-color: #ef4444;"></span>
+                            <span class="legend-label">&lt;80</span>
+                        </span>
+                        <span class="legend-item">
+                            <span class="legend-dot" style="background-color: #D3D3D3;"></span>
+                            <span class="legend-label">no score</span>
+                        </span>
+                    </div>
+
+                    <!-- Restaurant Items -->
+                    <div id="restaurantList"></div>
+                </div>
+            </div>
+        </aside>
+
+            <!-- Map (right) -->
+            <div class="map-container">
+                <div id="map"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Initialize map
+        let map = L.map('map').setView([40.7128, -74.006], 12);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+            maxZoom: 19,
+        }).addTo(map);
+
+        let markersLayer = L.layerGroup().addTo(map);
+
+        function refreshMapSize() {
+            try {
+                map.invalidateSize({ animate: false });
+            } catch (e) { /* noop */ }
+        }
+        window.addEventListener('resize', refreshMapSize);
+        window.addEventListener('orientationchange', refreshMapSize);
+        map.whenReady(() => {
+            requestAnimationFrame(refreshMapSize);
+            setTimeout(refreshMapSize, 200);
+        });
+
+        // Try to get user's location
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    map.setView([pos.coords.latitude, pos.coords.longitude], 14);
+                },
+                () => {
+                    // Permission denied - keep default NYC view
+                }
+            );
+        }
+
+        // Global state
+        let restaurants = [];
+        let loading = false;
+
+        // Map sort by values to API format
+        function mapSortByToApi(sortBy) {
+            const mapping = {
+                'composite-high-low': '-composite_score',
+                'composite-low-high': 'composite_score',
+                'name-a-z': 'name',
+                'name-z-a': '-name'
+            };
+            return mapping[sortBy] || '-composite_score';
+        }
+
+        // Fetch restaurants from API
+        async function fetchRestaurants() {
+            if (loading) return;
+
+            loading = true;
+            const applyBtn = document.getElementById('applyBtn');
+            applyBtn.disabled = true;
+            applyBtn.textContent = 'Loading...';
+
+            const errorMessage = document.getElementById('errorMessage');
+            errorMessage.style.display = 'none';
+
+            try {
+                const params = new URLSearchParams();
+
+                const search = document.getElementById('search').value.trim();
+                if (search) params.set('search', search);
+
+                const borough = document.getElementById('borough').value;
+                if (borough !== 'all') {
+                    const boroughName = borough === 'staten'
+                        ? 'Staten Island'
+                        : borough.charAt(0).toUpperCase() + borough.slice(1);
+                    params.set('borough', boroughName);
+                }
+
+                const cuisine = document.getElementById('cuisine').value;
+                if (cuisine !== 'all') params.set('cuisine', cuisine);
+
+                const minScore = document.getElementById('minScore').value.trim();
+                if (minScore) params.set('min_score', minScore);
+
+                const maxScore = document.getElementById('maxScore').value.trim();
+                if (maxScore) params.set('max_score', maxScore);
+
+                const sortBy = document.getElementById('sortBy').value;
+                params.set('sort_by', mapSortByToApi(sortBy));
+                params.set('limit', '500');
+
+                const onlyVisibleArea = document.getElementById('onlyVisibleArea').checked;
+                if (onlyVisibleArea) {
+                    const bounds = map.getBounds();
+                    params.set('sw_lat', String(bounds.getSouthWest().lat));
+                    params.set('sw_lng', String(bounds.getSouthWest().lng));
+                    params.set('ne_lat', String(bounds.getNorthEast().lat));
+                    params.set('ne_lng', String(bounds.getNorthEast().lng));
+                }
+
+                const response = await fetch(`/api/restaurants/map-data/?${params.toString()}`);
+
+                if (!response.ok) {
+                    throw new Error(`Could not load map data (${response.status}).`);
+                }
+
+                const data = await response.json();
+                restaurants = data.results || [];
+
+                updateMap();
+                updateRestaurantList();
+                requestAnimationFrame(refreshMapSize);
+
+            } catch (error) {
+                errorMessage.textContent = error.message || 'Network error loading restaurants.';
+                errorMessage.style.display = 'block';
+                restaurants = [];
+                updateMap();
+                updateRestaurantList();
+                requestAnimationFrame(refreshMapSize);
+            } finally {
+                loading = false;
+                applyBtn.disabled = false;
+                applyBtn.textContent = 'Apply Filters';
+            }
+        }
+
+        // Update map markers
+        function updateMap() {
+            markersLayer.clearLayers();
+
+            restaurants.forEach(restaurant => {
+                const score = restaurant.composite_score;
+                let color = '#D3D3D3';
+
+                if (score !== null) {
+                    if (score >= 90) color = '#22c55e';
+                    else if (score >= 80) color = '#eab308';
+                    else color = '#ef4444';
+                }
+
+                const icon = L.divIcon({
+                    className: '',
+                    html: `<div style="width:14px;height:14px;border-radius:50%;background:${color};border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,.3)"></div>`,
+                    iconSize: [14, 14],
+                    iconAnchor: [7, 7],
+                });
+
+                const marker = L.marker([restaurant.latitude, restaurant.longitude], { icon });
+
+                const popupContent = `
+                    <div style="font-family: var(--font-sans);font-size:13px">
+                        <strong>${restaurant.name}</strong><br/>
+                        ${restaurant.address}<br/>
+                        ${restaurant.grade ? `Grade: ${restaurant.grade} · ` : ''}Score: ${restaurant.composite_score_label}<br/>
+                        ${restaurant.cuisine_tags?.join(', ') || ''}<br/>
+                        ${restaurant.phone || ''}
+                    </div>
+                `;
+
+                marker.bindPopup(popupContent);
+                marker.on('click', () => {
+                    goToRestaurantDetail(restaurant.id);
+                });
+
+                markersLayer.addLayer(marker);
+            });
+        }
+
+        // Update restaurant list
+        function updateRestaurantList() {
+            const resultCount = document.getElementById('resultCount');
+            resultCount.textContent = `${restaurants.length} result${restaurants.length !== 1 ? 's' : ''}`;
+
+            const restaurantList = document.getElementById('restaurantList');
+            restaurantList.innerHTML = '';
+
+            restaurants.forEach(restaurant => {
+                const cuisineStr = restaurant.borough && restaurant.cuisine_tags?.length
+                    ? `${restaurant.borough} · ${restaurant.cuisine_tags.join(', ')}`
+                    : restaurant.cuisine_tags?.join(', ') || '';
+
+                const item = document.createElement('div');
+                item.className = 'restaurant-item';
+                item.onclick = () => {
+                    if (restaurant.latitude && restaurant.longitude) {
+                        map.flyTo([restaurant.latitude, restaurant.longitude], 16);
+                    }
+                    goToRestaurantDetail(restaurant.id);
+                };
+
+                item.innerHTML = `
+                    <div class="restaurant-header">
+                        <h4 class="restaurant-name">${restaurant.name}</h4>
+                        <span class="restaurant-score">${restaurant.composite_score_label}</span>
+                    </div>
+                    <p class="restaurant-address">${restaurant.address}</p>
+                    <p class="restaurant-info">${cuisineStr}</p>
+                `;
+
+                restaurantList.appendChild(item);
+            });
+        }
+
+        // Apply filters
+        function applyFilters() {
+            fetchRestaurants();
+        }
+
+        // Reset filters
+        function resetFilters() {
+            document.getElementById('search').value = '';
+            document.getElementById('borough').value = 'all';
+            document.getElementById('cuisine').value = 'all';
+            document.getElementById('minScore').value = '';
+            document.getElementById('maxScore').value = '';
+            document.getElementById('sortBy').value = 'composite-high-low';
+            document.getElementById('onlyVisibleArea').checked = false;
+            fetchRestaurants();
+        }
+
+        // Navigation functions
+        function goBack() {
+            window.location.href = "/dashboard/";
+        }
+
+        function goToMessages() {
+            window.location.href = "/messages/";
+        }
+
+        function goToFriendChat() {
+            window.location.href = "/friends/";
+        }
+
+        function goToProfile() {
+            window.location.href = "/profile/";
+        }
+
+        async function handleLogout() {
+            try {
+                const response = await fetch('/api/auth/logout/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                });
+                if (response.ok) { window.location.href = '/home/'; }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        function goToRestaurantDetail(id) {
+            window.location.href = `/restaurant/${id}/`;
+        }
+
+        // Load restaurants on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            fetchRestaurants();
+            setTimeout(refreshMapSize, 400);
+        });
+        window.addEventListener('load', () => setTimeout(refreshMapSize, 100));
+    </script>
+</body>
+</html>

@@ -1,0 +1,266 @@
+{% extends 'nomz/base.html' %}
+{% block main_layout %}
+{% include 'nomz/components/premium_design.html' %}
+<style>
+    nav.navbar, body > footer, .nav-icons { display: none !important; }
+    .ad-container { max-width: 1100px; margin: 0 auto; padding: 2rem; position: relative; z-index: 10; }
+    
+    .ad-header { margin-bottom: 2.5rem; }
+    .ad-page-title { font-family: var(--font-sans); font-size: 28px; font-weight: 600; color: var(--red); margin: 0 0 0.5rem 0; }
+    .ad-page-subtitle { color: #8a7e75; font-size: 14px; margin: 0; }
+    
+    .ad-table-header { 
+        display: flex; align-items: center; gap: 1.5rem; padding: 0 1.25rem 1rem 1.25rem;
+        border-bottom: 1px solid rgba(212, 43, 43, 0.1); margin-bottom: 1rem;
+        font-size: 11px; font-weight: 700; color: #8a7e75; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+
+    .filter-bar { display: flex; gap: 0.75rem; margin-bottom: 1.5rem; }
+    .filter-btn { padding: 8px 24px; border-radius: 12px; border: 1px solid rgba(212, 43, 43, 0.2); background: white; color: #8a7e75; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+    .filter-btn.active { background: var(--red); color: white; border-color: var(--red); }
+    
+    .found-count { font-size: 13px; color: #8a7e75; margin-bottom: 2rem; }
+
+    .user-card { 
+        background: white; border-radius: 12px; padding: 0.75rem 1.25rem; margin-bottom: 0.5rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.02); display: flex; align-items: center; gap: 1.5rem;
+        transition: all 0.2s; border: 1px solid transparent;
+    }
+    .user-card:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+
+    .live-pulse { width: 8px; height: 8px; background: #10b981; border-radius: 50%; display: inline-block; margin-right: 8px; box-shadow: 0 0 8px #10b981; animation: live-blink 2s infinite; }
+    @keyframes live-blink { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.8); } 100% { opacity: 1; transform: scale(1); } }
+
+    .col-item { display: flex; align-items: center; white-space: nowrap; flex-shrink: 0; }
+    .col-value { font-size: 14px; color: #333; font-weight: 500; }
+
+    .status-pill { padding: 2px 8px; border-radius: 4px; font-size: 9px; font-weight: 800; text-transform: uppercase; display: inline-block; }
+    .pill-active { background: #10b981; color: white; }
+    .pill-flagged { background: #f59e0b; color: white; }
+    .pill-suspended { background: #ef4444; color: white; }
+
+    .role-badge { font-size: 10px; font-weight: 700; color: var(--red); background: rgba(212, 43, 43, 0.1); padding: 2px 6px; border-radius: 4px; text-transform: uppercase; }
+
+    /* Optimized widths */
+    .col-user { width: 180px; }
+    .col-role { width: 100px; }
+    .col-active { width: 220px; }
+    .col-history { width: 150px; }
+    .col-status { width: 100px; }
+    .col-actions { flex-grow: 1; display: flex; justify-content: flex-end; }
+
+    .manage-btn { padding: 4px 16px; border-radius: 8px; border: 1px solid rgba(212, 43, 43, 0.2); background: white; color: var(--red); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .manage-btn:hover { background: rgba(212, 43, 43, 0.05); }
+
+    /* Modal Styling */
+    .modal-overlay { 
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+        background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
+        display: none; align-items: center; justify-content: center; z-index: 1000;
+    }
+    .modal-card { 
+        background: white; width: 90%; max-width: 400px; padding: 2rem; 
+        border-radius: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        text-align: left;
+    }
+    .modal-title { font-family: var(--font-sans); font-size: 20px; font-weight: 700; color: var(--red); margin-bottom: 1rem; }
+    .modal-text { font-size: 14px; color: #666; line-height: 1.5; margin-bottom: 2rem; }
+    .modal-actions { display: flex; gap: 1rem; }
+    .modal-btn { flex: 1; padding: 12px; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; border: none; }
+    .btn-cancel { background: white; border: 1.5px solid var(--red); color: var(--red); }
+    .btn-confirm { background: var(--red); color: white; }
+</style>
+
+{% include 'nomz/components/premium_nav.html' %}
+
+<div class="ad-container">
+    <div class="ad-header">
+        <h1 class="ad-page-title"><span class="live-pulse"></span>Manage Users</h1>
+        <p class="ad-page-subtitle">Directory of all diners and restaurant owners on the platform.</p>
+    </div>
+    
+    <div class="filter-bar">
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="active">Active</button>
+        <button class="filter-btn" data-filter="flagged">Flagged</button>
+        <button class="filter-btn" data-filter="suspended">Suspended</button>
+    </div>
+    <p class="found-count" id="user-count">0 user(s) found</p>
+    
+    <div class="ad-table-header">
+        <div class="col-user">Username</div>
+        <div class="col-role">Type</div>
+        <div class="col-active">Last Active</div>
+        <div class="col-history">Joined</div>
+        <div class="col-status">Status</div>
+        <div class="col-actions">Action</div>
+    </div>
+    
+    <div id="user-list">
+        <p style="text-align: center; color: #999; padding: 3rem;">Loading user directory...</p>
+    </div>
+</div>
+
+<!-- Custom Toggle Modal -->
+<div class="modal-overlay" id="toggle-modal">
+    <div class="modal-card">
+        <h2 class="modal-title">Toggle user active status</h2>
+        <p class="modal-text">Flips whether this account may log in. Superusers cannot be toggled from the API.</p>
+        <div class="modal-actions">
+            <button class="modal-btn btn-cancel" onclick="closeModal()">Cancel</button>
+            <button class="modal-btn btn-confirm" id="confirm-toggle-btn">Update</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentFilter = 'all';
+let pendingUserId = null;
+
+async function apiCall(path, options = {}) {
+    const getCookie = (name) => {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    };
+    const headers = {
+        'X-CSRFToken': getCookie('csrftoken'),
+        'Content-Type': 'application/json',
+        ...options.headers
+    };
+    return fetch(path, { ...options, headers });
+}
+
+function openModal(id) {
+    pendingUserId = id;
+    document.getElementById('toggle-modal').style.display = 'flex';
+}
+
+function closeModal() {
+    document.getElementById('toggle-modal').style.display = 'none';
+    pendingUserId = null;
+}
+
+document.getElementById('confirm-toggle-btn').onclick = async () => {
+    if (!pendingUserId) return;
+    const btn = document.getElementById('confirm-toggle-btn');
+    btn.disabled = true;
+    btn.textContent = 'Updating...';
+    
+    try {
+        const r = await apiCall(`/api/admin/users/${pendingUserId}/toggle-active/`, {method:'POST'});
+        if (r.ok) {
+            closeModal();
+            load();
+        } else {
+            const d = await r.json();
+            alert(d.error || 'Failed to toggle status');
+        }
+    } catch (err) { alert(err.message); }
+    finally {
+        btn.disabled = false;
+        btn.textContent = 'Update';
+    }
+};
+
+async function load(){
+    const container = document.getElementById('user-list');
+    const countText = document.getElementById('user-count');
+    
+    try {
+        const r = await apiCall('/api/admin/users/');
+        if (!r.ok) throw new Error('Unauthorized');
+        
+        const d = await r.json();
+        const allUsers = d.results || [];
+        
+        const processed = allUsers.map(u => ({
+            ...u,
+            isFlagged: u.is_flagged || u.has_suspicious_activity
+        }));
+
+        let filtered = processed;
+        if (currentFilter === 'active') filtered = processed.filter(u => u.is_active && !u.isFlagged);
+        else if (currentFilter === 'flagged') filtered = processed.filter(u => u.isFlagged);
+        else if (currentFilter === 'suspended') filtered = processed.filter(u => !u.is_active);
+
+        countText.textContent = `${filtered.length} user(s) found`;
+
+        if (filtered.length === 0) {
+            container.innerHTML = `
+                <div style="background: white; border-radius: 16px; padding: 5rem 2rem; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.02);">
+                    <p style="color: #8a7e75; font-size: 16px; margin: 0;">No users found in this category.</p>
+                </div>
+            `;
+            return;
+        }
+        
+        container.innerHTML = filtered.map(u => {
+            const dateJoined = new Date(u.date_joined).toLocaleDateString();
+            let lastActiveStr = 'Never';
+            if (u.last_login) {
+                const date = new Date(u.last_login);
+                lastActiveStr = `${date.toLocaleDateString()}, ${date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })}`;
+            }
+
+            const statusClass = u.is_active ? (u.isFlagged ? 'pill-flagged' : 'pill-active') : 'pill-suspended';
+            const statusText = u.is_active ? (u.isFlagged ? 'FLAGGED' : 'ACTIVE') : 'SUSPENDED';
+
+            return `
+                <div class="user-card">
+                    <div class="col-item col-user">
+                        <span class="col-value">${u.username}</span>
+                    </div>
+
+                    <div class="col-item col-role">
+                        <span class="role-badge">${u.account_type}</span>
+                    </div>
+
+                    <div class="col-item col-active">
+                        <span class="col-value">${lastActiveStr}</span>
+                    </div>
+
+                    <div class="col-item col-history">
+                        <span class="col-value">${dateJoined}</span>
+                    </div>
+
+                    <div class="col-item col-status">
+                        <div class="status-pill ${statusClass}">${statusText}</div>
+                    </div>
+
+                    <div class="col-item col-actions">
+                        <button onclick="openModal(${u.id})" class="manage-btn">Manage</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (err) {
+        container.innerHTML = `<div style="text-align: center; color: #dc2626; padding: 3rem;">Error: ${err.message}</div>`;
+    }
+}
+
+document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.onclick = () => {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentFilter = btn.dataset.filter;
+        load();
+    };
+});
+
+setInterval(load, 5000);
+load();
+</script>
+{% endblock %}

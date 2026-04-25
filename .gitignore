@@ -10,6 +10,9 @@ __pycache__/
 .Python
 build/
 develop-eggs/
+# Node dependencies
+node_modules/
+frontend/node_modules/
 # Only repo-root dist (avoid matching arbitrary */dist/ inside deps)
 /dist/
 # NOTE: frontend/dist/ is NOT ignored — it must ship in the deployment archive
@@ -64,6 +67,7 @@ cover/
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
+staticfiles/
 
 # Local / test-generated user uploads (photo tests write red JPEGs here)
 media/restaurant_photos/

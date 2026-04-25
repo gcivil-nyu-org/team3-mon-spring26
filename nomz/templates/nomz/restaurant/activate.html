@@ -1,0 +1,52 @@
+{% extends 'nomz/base.html' %}
+{% block main_layout %}
+{% include 'nomz/components/premium_design.html' %}
+<style>
+    nav.navbar, body > footer { display: none !important; }
+    .rest-container { max-width: 600px; margin: 0 auto; padding: 4rem 2rem; position: relative; z-index: 10; text-align: center; }
+    .rest-title { font-family: var(--font-sans); font-size: 32px; font-weight: 700; color: var(--red); margin-bottom: 2rem; }
+    .glass-card { 
+        background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(20px); border: 1px solid rgba(212, 43, 43, 0.15);
+        border-radius: 24px; padding: 3rem 2rem; box-shadow: 0 8px 32px rgba(212, 43, 43, 0.08);
+    }
+    .status-display { font-size: 20px; font-weight: 600; color: #333; margin-bottom: 2rem; }
+    .status-badge { display: inline-block; padding: 6px 16px; border-radius: 20px; font-size: 14px; margin-left: 8px; }
+    .status-active { background: #D1FAE5; color: #065F46; }
+    .status-inactive { background: #FEE2E2; color: #991B1B; }
+    .ad-btn { 
+        padding: 12px 32px; border-radius: 100px; font-weight: 700; cursor: pointer; transition: all 0.3s; border: none; font-family: var(--font-sans);
+        background: var(--red); color: white; box-shadow: 0 4px 12px rgba(212, 43, 43, 0.3);
+    }
+    .ad-btn:hover { background: #b82020; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(212, 43, 43, 0.4); }
+</style>
+
+<div class="rest-container">
+    {% include 'nomz/components/premium_nav.html' %}
+    <h1 class="rest-title" style="margin-top: 2rem;">Business Activation</h1>
+    <div class="glass-card">
+        <p class="status-display">Current Status: <span id="status-badge" class="status-badge">Loading...</span></p>
+        <p style="color: #666; margin-bottom: 2rem; font-size: 14px; line-height: 1.5;">
+            Toggle your business visibility on the platform. When inactive, users cannot find or message your restaurant.
+        </p>
+        <button id="toggle" class="ad-btn" onclick="toggle()">Switch Status</button>
+    </div>
+</div>
+
+<script>
+    async function load() {
+        const r = await apiFetch('/api/restaurant/activation/');
+        const d = await r.json();
+        const badge = document.getElementById('status-badge');
+        badge.textContent = d.is_active ? 'Active' : 'Inactive';
+        badge.className = 'status-badge ' + (d.is_active ? 'status-active' : 'status-inactive');
+    }
+    async function toggle() {
+        const btn = document.getElementById('toggle');
+        btn.disabled = true; btn.textContent = 'Updating...';
+        await apiFetch('/api/restaurant/activation/', { method: 'POST' });
+        await load();
+        btn.disabled = false; btn.textContent = 'Switch Status';
+    }
+    load();
+</script>
+{% endblock %}

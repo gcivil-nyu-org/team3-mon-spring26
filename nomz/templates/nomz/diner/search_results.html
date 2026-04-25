@@ -1,0 +1,204 @@
+{% extends 'nomz/base.html' %}
+{% load static %}
+{% block title %}Search — nomz{% endblock %}
+
+{% block main_layout %}
+<style>
+    nav.navbar, body > footer { display: none !important; }
+    body { background: var(--paper); }
+</style>
+
+{% include 'nomz/components/premium_nav.html' %}
+
+<main style="max-width:1100px;margin:0 auto;padding:40px 6vw;">
+
+    <!-- Heading -->
+    <div style="border-bottom:2px solid var(--ink);padding-bottom:16px;margin-bottom:28px;">
+        <span class="editorial-label">Explore</span>
+        <h1 style="font-family:var(--font-serif);font-size:clamp(1.75rem,4vw,2.5rem);font-weight:900;color:var(--ink);">Search Restaurants</h1>
+    </div>
+
+    <!-- Search Form -->
+    <form onsubmit="handleSearchSubmit(event)" style="margin-bottom:28px;">
+        <div style="display:flex;gap:0;border:1px solid var(--ink);overflow:hidden;margin-bottom:8px;">
+            <input type="search" id="search-query" placeholder="Name, cuisine, description…"
+                style="flex:1;border:none;padding:13px 18px;font-family:var(--font-sans);font-size:14px;background:var(--paper);color:var(--ink);outline:none;min-width:0;">
+            <select id="neighborhood-filter"
+                style="border:none;border-left:1px solid var(--rule);background:var(--paper);padding:13px 14px;font-family:var(--font-sans);font-size:13px;color:var(--ink);outline:none;">
+                <option value="">All neighborhoods</option>
+            </select>
+            <select id="sort-by"
+                style="border:none;border-left:1px solid var(--rule);background:var(--paper);padding:13px 14px;font-family:var(--font-sans);font-size:13px;color:var(--ink);outline:none;">
+                <option value="composite-high-low">Score ↓</option>
+                <option value="composite-low-high">Score ↑</option>
+                <option value="name-a-z">Name A–Z</option>
+                <option value="name-z-a">Name Z–A</option>
+            </select>
+            <button type="submit" class="btn btn-primary" style="border-radius:0;white-space:nowrap;">Search</button>
+        </div>
+    </form>
+
+    <!-- Status messages -->
+    <div id="error-message" style="display:none;background:rgba(212,43,43,0.06);border-left:3px solid var(--red);padding:10px 14px;font-size:13px;color:var(--red);margin-bottom:16px;"></div>
+    <div id="loading-message" style="display:none;font-size:13px;color:var(--mid);padding:12px 0;letter-spacing:0.1em;text-transform:uppercase;">Loading…</div>
+    <div id="results-count" style="display:none;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--mid);margin-bottom:16px;"></div>
+    <div id="empty-message" style="display:none;font-size:14px;color:var(--mid);padding:40px 0;text-align:center;border:1px solid var(--rule);">No restaurants match your filters. Try a different search.</div>
+
+    <!-- Results -->
+    <ul id="results-list" style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:1px;background:var(--rule);border:1px solid var(--rule);"></ul>
+
+</main>
+
+<footer style="border-top:2px solid var(--ink);padding:20px 6vw;display:flex;justify-content:space-between;align-items:center;margin-top:48px;">
+    <span style="font-family:var(--font-serif);font-style:italic;font-size:13px;color:var(--tan);">Good food, always.</span>
+    <span style="font-size:10px;letter-spacing:0.3em;text-transform:uppercase;color:var(--mid);">nomz</span>
+</footer>
+
+<style>
+.result-item {
+    background: var(--paper);
+    padding: 20px 24px;
+    cursor: pointer;
+    transition: background 0.15s;
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+    align-items: flex-start;
+}
+.result-item:hover { background: rgba(200,169,110,0.08); }
+.result-name {
+    font-family: var(--font-serif);
+    font-size: 1.125rem;
+    font-weight: 900;
+    color: var(--ink);
+    margin-bottom: 4px;
+    transition: color 0.15s;
+}
+.result-item:hover .result-name { color: var(--red); }
+.result-meta { font-size: 12px; color: var(--mid); letter-spacing: 0.1em; margin-bottom: 4px; }
+.result-desc { font-size: 12px; color: var(--mid); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.result-score { font-size: 11px; font-weight: 700; letter-spacing: 0.15em; color: var(--red); white-space: nowrap; padding: 4px 8px; border: 1px solid rgba(212,43,43,0.2); flex-shrink: 0; }
+.flagged-badge { font-size: 10px; color: var(--mid); background: rgba(200,169,110,0.15); padding: 2px 6px; margin-left: 6px; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentData = null;
+let cancelled = false;
+
+function getUrlParams() {
+    const params = new URLSearchParams(window.location.search);
+    return { q: params.get('q') || '', neighborhood: params.get('neighborhood') || '', sort_by: params.get('sort_by') || 'composite-high-low' };
+}
+
+function mapSortByToApi(uiValue) {
+    const map = { 'composite-high-low': 'composite_desc', 'composite-low-high': 'composite_asc', 'name-a-z': 'name_asc', 'name-z-a': 'name_desc' };
+    return map[uiValue] || 'composite_desc';
+}
+
+function initializeForm() {
+    const params = getUrlParams();
+    document.getElementById('search-query').value = params.q;
+    document.getElementById('sort-by').value = params.sort_by;
+}
+
+async function fetchResults() {
+    cancelled = false;
+    const params = getUrlParams();
+    document.getElementById('loading-message').style.display = 'block';
+    document.getElementById('error-message').style.display = 'none';
+    document.getElementById('results-count').style.display = 'none';
+    document.getElementById('empty-message').style.display = 'none';
+    document.getElementById('results-list').innerHTML = '';
+    const apiParams = new URLSearchParams();
+    if (params.q.trim()) apiParams.set('q', params.q.trim());
+    if (params.neighborhood) apiParams.set('neighborhood', params.neighborhood);
+    apiParams.set('sort_by', mapSortByToApi(params.sort_by));
+    try {
+        const response = await apiFetch(`/api/search/?${apiParams.toString()}`);
+        if (cancelled) return;
+        if (!response.ok) { showError('Could not load search results.'); return; }
+        const data = await response.json();
+        if (cancelled) return;
+        currentData = data;
+        renderResults(data);
+    } catch (error) {
+        if (!cancelled) { console.error('Search error:', error); showError('Network error.'); }
+    } finally {
+        if (!cancelled) document.getElementById('loading-message').style.display = 'none';
+    }
+}
+
+function showError(message) {
+    const errorEl = document.getElementById('error-message');
+    errorEl.textContent = message;
+    errorEl.style.display = 'block';
+    document.getElementById('results-count').style.display = 'none';
+    document.getElementById('empty-message').style.display = 'none';
+    document.getElementById('results-list').innerHTML = '';
+}
+
+function renderResults(data) {
+    const neighborhoodSelect = document.getElementById('neighborhood-filter');
+    const currentNeighborhood = getUrlParams().neighborhood;
+    neighborhoodSelect.innerHTML = '<option value="">All neighborhoods</option>';
+    (data.all_neighborhoods || []).forEach(n => {
+        const option = document.createElement('option');
+        option.value = n; option.textContent = n;
+        if (n === currentNeighborhood) option.selected = true;
+        neighborhoodSelect.appendChild(option);
+    });
+    const countEl = document.getElementById('results-count');
+    const count = data.results.length;
+    let countText = `${count} result${count === 1 ? '' : 's'}`;
+    if (data.query) countText += ` for "${data.query}"`;
+    if (data.neighborhood) countText += ` in ${data.neighborhood}`;
+    countEl.textContent = countText;
+    countEl.style.display = 'block';
+    if (data.results.length === 0) { document.getElementById('empty-message').style.display = 'block'; return; }
+    const listEl = document.getElementById('results-list');
+    listEl.innerHTML = data.results.map(restaurant => `
+        <li>
+            <div class="result-item" onclick="window.location.href='/restaurant/${restaurant.id}/'">
+                <div style="flex:1;min-width:0;">
+                    <div class="result-name">
+                        ${escapeHtml(restaurant.name)}
+                        ${restaurant.is_flagged ? '<span class="flagged-badge">flagged</span>' : ''}
+                    </div>
+                    <div class="result-meta">${escapeHtml(restaurant.cuisine)} · ${escapeHtml(restaurant.price_label)}${restaurant.neighborhood ? ` · ${escapeHtml(restaurant.neighborhood)}` : ''}</div>
+                    ${restaurant.description ? `<div class="result-desc">${escapeHtml(restaurant.description)}</div>` : ''}
+                </div>
+                <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;flex-shrink:0;">
+                    ${restaurant.composite_score != null ? `<span class="result-score">Score ${Number(restaurant.composite_score).toFixed(1)}</span>` : ''}
+                    ${restaurant.rating_score != null ? `<span style="font-size:11px;color:var(--mid);">Rating ${Number(restaurant.rating_score).toFixed(1)}</span>` : ''}
+                </div>
+            </div>
+        </li>
+    `).join('');
+}
+
+function handleSearchSubmit(event) {
+    event.preventDefault();
+    const query = document.getElementById('search-query').value.trim();
+    const neighborhood = document.getElementById('neighborhood-filter').value;
+    const sortBy = document.getElementById('sort-by').value;
+    const params = new URLSearchParams();
+    if (query) params.set('q', query);
+    if (neighborhood) params.set('neighborhood', neighborhood);
+    params.set('sort_by', sortBy);
+    window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
+    fetchResults();
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+window.addEventListener('popstate', () => { initializeForm(); fetchResults(); });
+window.addEventListener('beforeunload', () => { cancelled = true; });
+document.addEventListener('DOMContentLoaded', () => { initializeForm(); fetchResults(); });
+</script>
+{% endblock %}

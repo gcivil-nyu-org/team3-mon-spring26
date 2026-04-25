@@ -286,7 +286,7 @@ def start_conversation(request):
         return _json_error("Method not allowed.", status=405)
 
     if not _is_diner(request.user):
-        return HttpResponseForbidden("Only diners can start conversations.")
+        return _json_error("Only diners can start conversations.", status=403)
 
     try:
         payload = json.loads(request.body.decode("utf-8") or "{}")

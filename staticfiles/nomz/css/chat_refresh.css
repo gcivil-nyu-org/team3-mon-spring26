@@ -1,0 +1,169 @@
+:root {
+    --chat-accent: #E06E7F; /* SPA Rose */
+    --chat-accent-soft: rgba(224, 110, 127, 0.15);
+    --chat-bg: #FFF9F5; /* SPA Peach-White background */
+    --chat-bubble-self: rgba(224, 110, 127, 0.2);
+    --chat-bubble-other: rgba(0, 0, 0, 0.05);
+    --chat-text-dark: #333333;
+    --chat-text-muted: #666666;
+    --chat-border: rgba(224, 110, 127, 0.15); /* SPA Soft Border */
+}
+
+/* Global Montserrat Sync */
+.chat-premium-font, body, .navbar-brand, .nav-link, .btn, h1, h2, h3, h4, h5, h6, input {
+    font-family: 'Montserrat', sans-serif !important;
+}
+
+/* SPA Dashboard Container */
+.chat-dashboard-container {
+    max-width: 1200px;
+    height: calc(100vh - 100px);
+    margin: 0 auto;
+    background-color: var(--chat-bg);
+}
+
+.chat-column {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.chat-scroll-area {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 1rem;
+}
+
+/* SPA Soft Border Containers */
+.premium-card {
+    border: 2px solid var(--chat-border) !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+    background-color: #ffffff !important;
+    overflow: hidden;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+/* SPA Specific Headers */
+.premium-card-header-solid {
+    background-color: var(--chat-accent) !important;
+    color: #ffffff !important;
+    padding: 8px 12px !important;
+    font-weight: 500 !important;
+    font-size: 0.85rem !important;
+    border: none !important;
+}
+
+/* Chat Header (Conversation Name) */
+.chat-header-v2 {
+    border-bottom: 2px solid var(--chat-border);
+    padding: 12px 16px;
+    background-color: #fff;
+}
+
+.chat-header-v2 h2 {
+    color: var(--chat-accent);
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+/* List Items (SPA Style) */
+.premium-list-group-item {
+    border: none !important;
+    border-bottom: 1px solid rgba(224, 110, 127, 0.1) !important;
+    padding: 12px 14px !important;
+    transition: background-color 0.2s;
+    font-size: 0.75rem !important;
+    cursor: pointer;
+    color: #333 !important;
+}
+
+.premium-list-group-item:hover, .premium-list-group-item.active {
+    background-color: rgba(224, 110, 127, 0.08) !important;
+}
+
+.premium-list-group-item.active {
+    border-left: 0 !important; /* SPA doesn't have the left border bar in the screenshot */
+}
+
+/* Action Buttons & Inputs (SPA Style) */
+.btn-premium {
+    background-color: var(--chat-accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: opacity 0.2s;
+}
+
+.btn-premium:hover:not(:disabled) {
+    opacity: 0.9;
+}
+
+.btn-premium:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+.premium-input {
+    border: 2px solid rgba(224, 110, 127, 0.25) !important;
+    border-radius: 8px !important;
+    padding: 8px 12px !important;
+    font-size: 0.85rem !important;
+    box-shadow: none !important;
+}
+
+/* SPA Mirror Navbar */
+.spa-navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    background-color: var(--chat-bg);
+}
+
+.spa-nav-logo {
+    color: var(--chat-accent);
+    font-size: 1.5rem;
+    font-weight: 800;
+    text-decoration: none;
+    letter-spacing: -0.02em;
+}
+
+.spa-nav-btn {
+    background: transparent;
+    border: none;
+    font-size: 1.25rem;
+    color: var(--chat-accent);
+    padding: 8px;
+    border-radius: 8px;
+    transition: background-color 0.2s;
+}
+
+.spa-nav-btn:hover {
+    background-color: rgba(224, 110, 127, 0.1);
+}
+
+/* Chat Bubbles (SPA Mirror) */
+.bubble-premium {
+    max-width: 85%;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 0.75rem !important;
+    margin-bottom: 4px;
+    color: #333;
+    font-family: 'Montserrat', sans-serif;
+}
+
+.bubble-premium-self {
+    background-color: var(--chat-bubble-self);
+}
+
+.bubble-premium-other {
+    background-color: var(--chat-bubble-other);
+}

@@ -1,0 +1,81 @@
+<style>
+    :root {
+        --premium-bg: linear-gradient(135deg, var(--paper) 0%, rgba(200,169,110,0.12) 50%, var(--paper) 100%);
+        --premium-orb-1: rgba(212, 43, 43, 0.15);
+        --premium-orb-2: rgba(212, 43, 43, 0.1);
+        --premium-orb-3: rgba(212, 43, 43, 0.08);
+        --premium-accent: var(--red);
+        --premium-accent-hover: #b82020;
+        --premium-glass-bg: rgba(255, 255, 255, 0.7);
+        --premium-glass-border: rgba(212, 43, 43, 0.15);
+        --premium-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
+    }
+
+    body {
+        margin: 0;
+        padding: 0;
+        background: var(--premium-bg) !important;
+        font-family: var(--font-sans);
+        min-height: 100vh;
+        position: relative;
+        overflow-x: hidden;
+    }
+
+    /* Floating Orbs */
+    .premium-orbs {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        z-index: 0;
+        pointer-events: none;
+        overflow: hidden;
+    }
+
+    .premium-orb {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(80px);
+        animation: premiumFloat 20s ease-in-out infinite;
+    }
+
+    .premium-orb-1 {
+        top: 10%; left: 5%; width: 400px; height: 400px;
+        background: radial-gradient(circle, var(--premium-orb-1) 0%, transparent 70%);
+        animation-duration: 15s;
+    }
+
+    .premium-orb-2 {
+        bottom: 15%; right: 8%; width: 500px; height: 500px;
+        background: radial-gradient(circle, var(--premium-orb-2) 0%, transparent 70%);
+        animation-duration: 20s;
+        animation-direction: reverse;
+    }
+
+    .premium-orb-3 {
+        top: 50%; left: 50%; width: 350px; height: 350px;
+        background: radial-gradient(circle, var(--premium-orb-3) 0%, transparent 70%);
+        animation-duration: 25s;
+        transform: translate(-50%, -50%);
+    }
+
+    @keyframes premiumFloat {
+        0%, 100% { transform: translate(0, 0) scale(1); }
+        33% { transform: translate(30px, -30px) scale(1.1); }
+        66% { transform: translate(-20px, 20px) scale(0.9); }
+    }
+
+    /* Shared Glass Class */
+    .premium-glass {
+        background: var(--premium-glass-bg);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid var(--premium-glass-border);
+        box-shadow: var(--premium-shadow);
+        border-radius: 20px;
+    }
+</style>
+
+<div class="premium-orbs">
+    <div class="premium-orb premium-orb-1"></div>
+    <div class="premium-orb premium-orb-2"></div>
+    <div class="premium-orb premium-orb-3"></div>
+</div>

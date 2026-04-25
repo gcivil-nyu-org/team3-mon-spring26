@@ -1,0 +1,13 @@
+{% extends 'nomz/base.html' %}
+{% block content %}
+<div style="padding:40px;background:var(--paper)"><h1 style="color:var(--red)">Report Content</h1>
+<form id="form"><textarea id="reason" rows="4" placeholder="Reason for reporting..." style="width:100%;padding:12px;border-radius:8px" required></textarea><br><button type="submit" class="btn btn-primary" style="margin-top:16px">Submit Report</button></form></div>
+<script>
+document.getElementById('form').addEventListener('submit',async e=>{
+e.preventDefault();
+await apiFetch('/api/report/',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content_type:'{{content_type}}',content_id:{{content_id}},reason:document.getElementById('reason').value})});
+alert('Report submitted!');
+history.back();
+});
+</script>
+{% endblock %}

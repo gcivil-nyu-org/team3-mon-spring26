@@ -1,0 +1,469 @@
+{% extends 'nomz/base.html' %}
+{% block navbar %}{% endblock %}
+{% block footer %}{% endblock %}
+{% block main_layout %}
+<style>
+    nav.navbar { display: none !important; }
+    body > footer { display: none !important; }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    @keyframes float {
+        0%, 100% { transform: translate(0,0) scale(1); }
+        50% { transform: translate(-20px,20px) scale(1.05); }
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(12px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes pulse {
+        0%, 100% { opacity: 1; } 50% { opacity: 0.4; }
+    }
+
+    /* ── DEFINITIVE FULL-WIDTH OVERRIDES ── */
+    body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: linear-gradient(135deg, var(--paper) 0%, rgba(200,169,110,0.12) 50%, var(--paper) 100%) !important;
+        font-family: var(--font-sans);
+        min-height: 100vh;
+        overflow: hidden;
+    }
+
+    .layout-wrapper {
+        display: flex; flex-direction: column; height: 100vh;
+        background: transparent;
+        position: relative;
+    }
+
+    /* Floating Gradient Orbs */
+    .dashboard-orbs div {
+        position: absolute;
+        border-radius: 50%;
+        pointer-events: none;
+    }
+    .orb-1 { top: 10%; left: 5%; width: 400px; height: 400px; background: radial-gradient(circle, rgba(212, 43, 43, 0.15) 0%, transparent 70%); animation: float 15s ease-in-out infinite; }
+    .orb-2 { bottom: 15%; right: 8%; width: 500px; height: 500px; background: radial-gradient(circle, rgba(212, 43, 43, 0.1) 0%, transparent 70%); animation: float 20s ease-in-out infinite reverse; }
+    .orb-3 { top: 50%; left: 50%; width: 350px; height: 350px; background: radial-gradient(circle, rgba(212, 43, 43, 0.08) 0%, transparent 70%); animation: float 25s ease-in-out infinite; transform: translate(-50%, -50%); }
+
+
+    /* ── 2-column layout ── */
+    .main-content {
+        flex: 1; display: flex; gap: 1.25rem;
+        padding: 1.25rem 1.5rem; overflow: hidden;
+        position: relative; z-index: 10;
+        max-width: 1200px; margin: 0 auto; width: 100%;
+    }
+
+    /* Glassmorphism panel */
+    .glass-panel {
+        background: rgba(255,255,255,0.7); backdrop-filter: blur(20px);
+        border: 1px solid rgba(212,43,43,0.15); border-radius: 24px;
+        display: flex; flex-direction: column; overflow: hidden;
+        box-shadow: 0 4px 24px rgba(212,43,43,0.06);
+    }
+
+    /* ── Sidebar ── */
+    .sidebar { width: 260px; flex-shrink: 0; }
+    .sidebar-header {
+        padding: 1rem 1.25rem; border-bottom: 1px solid rgba(212,43,43,0.1);
+        display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+    }
+    .sidebar-title { color: var(--red); font-size: 15px; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 6px; }
+    .new-btn {
+        padding: 5px 12px; background: var(--red); color: white; border: none;
+        border-radius: 9px; font-size: 13px; cursor: pointer;
+        font-family: var(--font-sans); font-weight: 600;
+        transition: background 0.2s; display: flex; align-items: center; gap: 5px;
+    }
+    .new-btn:hover { background: #b82020; }
+
+    .conv-list { flex: 1; overflow-y: auto; }
+    .conv-list::-webkit-scrollbar { width: 4px; }
+    .conv-list::-webkit-scrollbar-thumb { background: rgba(212,43,43,0.2); border-radius: 4px; }
+
+    .conv-item {
+        display: flex; align-items: center; gap: 10px;
+        padding: 10px 1.25rem; cursor: pointer;
+        border-bottom: 1px solid rgba(212,43,43,0.06);
+        transition: background 0.2s; animation: fadeIn 0.3s ease both;
+    }
+    .conv-item:hover { background: rgba(212,43,43,0.06); }
+    .conv-item.active { background: rgba(212,43,43,0.1); border-left: 3px solid var(--red); }
+    .conv-avatar {
+        width: 38px; height: 38px; flex-shrink: 0; border-radius: 50%;
+        background: linear-gradient(135deg, rgba(212,43,43,0.15), rgba(212,43,43,0.3));
+        display: flex; align-items: center; justify-content: center;
+        color: var(--red); font-weight: 700; font-size: 14px;
+        border: 2px solid rgba(212,43,43,0.2);
+    }
+    .conv-info { flex: 1; min-width: 0; }
+    .conv-name { font-size: 13px; font-weight: 600; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .conv-preview { font-size: 11px; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+
+    /* ── Chat panel ── */
+    .chat-area { flex: 1; min-width: 0; }
+
+    .welcome-wrap {
+        flex: 1; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; text-align: center; gap: 1rem; padding: 3rem;
+    }
+    .welcome-icon {
+        width: 72px; height: 72px;
+        background: linear-gradient(135deg, rgba(212,43,43,0.1), rgba(212,43,43,0.2));
+        border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--red);
+    }
+    .welcome-wrap h3 { color: #333; font-size: 20px; font-weight: 700; margin: 0; }
+    .welcome-wrap p { color: #888; font-size: 13px; margin: 0; max-width: 280px; line-height: 1.7; }
+
+    .chat-top {
+        padding: 1rem 1.5rem; border-bottom: 1px solid rgba(212,43,43,0.1);
+        display: none; align-items: center; gap: 12px; flex-shrink: 0;
+    }
+    .chat-top.visible { display: flex; }
+    .chat-avatar {
+        width: 38px; height: 38px; border-radius: 50%;
+        background: linear-gradient(135deg, rgba(212,43,43,0.15), rgba(212,43,43,0.3));
+        display: flex; align-items: center; justify-content: center;
+        color: var(--red); font-weight: 700; font-size: 15px;
+        border: 2px solid rgba(212,43,43,0.2); flex-shrink: 0;
+    }
+    .chat-title { font-size: 15px; font-weight: 700; color: #333; }
+    .chat-sub { font-size: 11px; color: #aaa; }
+
+    .messages-list {
+        flex: 1; overflow-y: auto; padding: 1.25rem;
+        display: none; flex-direction: column; gap: 0.875rem;
+    }
+    .messages-list.visible { display: flex; }
+    .messages-list::-webkit-scrollbar { width: 4px; }
+    .messages-list::-webkit-scrollbar-thumb { background: rgba(212,43,43,0.2); border-radius: 4px; }
+
+    .msg-wrap { display: flex; flex-direction: column; }
+    .msg-wrap.me { align-items: flex-end; }
+    .msg-wrap.them { align-items: flex-start; }
+    .msg-sender { font-size: 10px; color: #aaa; margin-bottom: 3px; font-weight: 600; }
+    .msg-bubble {
+        max-width: 72%; padding: 9px 13px; border-radius: 18px;
+        font-size: 13px; line-height: 1.5; word-break: break-word; animation: fadeIn 0.3s ease;
+    }
+    .msg-bubble.me { background: var(--red); color: white; border-bottom-right-radius: 6px; }
+    .msg-bubble.them { background: rgba(255,255,255,0.9); color: #333; border: 1px solid rgba(212,43,43,0.1); border-bottom-left-radius: 6px; }
+    .msg-time { font-size: 10px; opacity: 0.55; margin-top: 3px; text-align: right; }
+
+    .chat-input-area {
+        padding: 0.875rem 1.25rem; border-top: 1px solid rgba(212,43,43,0.1);
+        display: none; gap: 10px; align-items: center; flex-shrink: 0;
+    }
+    .chat-input-area.visible { display: flex; }
+    .chat-input {
+        flex: 1; padding: 9px 14px; border: 1px solid rgba(212,43,43,0.2);
+        border-radius: 14px; font-size: 13px; font-family: var(--font-sans);
+        outline: none; background: rgba(255,255,255,0.8); color: #333; transition: border-color 0.2s;
+    }
+    .chat-input:focus { border-color: var(--red); }
+    .chat-input::placeholder { color: #bbb; }
+    .send-btn {
+        padding: 9px 20px; background: var(--red); color: white; border: none;
+        border-radius: 14px; font-size: 13px; font-weight: 600; cursor: pointer;
+        font-family: var(--font-sans); transition: background 0.2s;
+    }
+    .send-btn:hover { background: #b82020; }
+    .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Modal */
+    .modal-overlay {
+        display: none; position: fixed; inset: 0; z-index: 1000;
+        background: rgba(0,0,0,0.3); align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+        background: white; border-radius: 20px; padding: 24px;
+        width: 420px; max-width: 94vw; max-height: 82vh; display: flex; flex-direction: column;
+        box-shadow: 0 8px 40px rgba(0,0,0,0.15); animation: fadeIn 0.25s ease-out;
+    }
+    .modal-box h3 { margin: 0 0 14px; color: var(--red); font-size: 16px; font-weight: 700; }
+    .modal-search-input {
+        width: 100%; padding: 10px 14px; border: 1px solid rgba(212,43,43,0.2);
+        border-radius: 12px; font-size: 13px; font-family: var(--font-sans);
+        outline: none; margin-bottom: 8px; transition: border-color 0.2s; box-sizing: border-box;
+    }
+    .modal-search-input:focus { border-color: var(--red); }
+    .modal-rest-list { flex: 1; overflow-y: auto; min-height: 100px; max-height: 220px; margin-bottom: 8px; border: 1px solid rgba(212,43,43,0.15); border-radius: 12px; }
+    .rest-pick { padding: 10px 14px; cursor: pointer; font-size: 13px; border-bottom: 1px solid rgba(212,43,43,0.07); transition: background 0.15s; }
+    .rest-pick:last-child { border-bottom: none; }
+    .rest-pick:hover { background: rgba(212,43,43,0.05); }
+    .rest-pick.selected { background: rgba(212,43,43,0.08); border-left: 3px solid var(--red); }
+    .rest-pick-name { font-weight: 600; color: #333; }
+    .rest-pick-sub { font-size: 11px; color: #888; margin-top: 1px; }
+    .modal-msg-input {
+        width: 100%; padding: 10px 14px; border: 1px solid rgba(212,43,43,0.2);
+        border-radius: 12px; font-size: 13px; font-family: var(--font-sans);
+        outline: none; resize: none; margin-bottom: 8px; box-sizing: border-box;
+    }
+    .modal-msg-input:focus { border-color: var(--red); }
+    .modal-err { color: var(--red); font-size: 12px; margin-bottom: 8px; min-height: 16px; }
+    .modal-actions { display: flex; gap: 8px; }
+    .modal-cancel { flex: 1; padding: 10px; background: #f5f5f5; border: none; border-radius: 10px; font-family: var(--font-sans); font-size: 13px; font-weight: 600; color: #666; cursor: pointer; }
+    .modal-cancel:hover { background: #ebebeb; }
+    .modal-ok { flex: 2; padding: 10px; background: var(--red); border: none; border-radius: 10px; font-family: var(--font-sans); font-size: 13px; font-weight: 600; color: white; cursor: pointer; }
+    .modal-ok:hover { background: #b82020; }
+    .modal-ok:disabled { background: #ccc; cursor: not-allowed; }
+
+    .loading-dots { display: flex; gap: 5px; align-items: center; justify-content: center; padding: 2rem; }
+    .loading-dots span { width: 8px; height: 8px; background: var(--red); border-radius: 50%; animation: pulse 1.2s infinite; }
+    .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+    .footer { text-align: center; padding: 10px; font-size: 12px; color: #bbb; flex-shrink: 0; z-index: 10; }
+</style>
+
+<div class="layout-wrapper">
+    <div class="dashboard-orbs">
+        <div class="orb-1"></div>
+        <div class="orb-2"></div>
+        <div class="orb-3"></div>
+    </div>
+
+    <!-- Edge-to-Edge Navbar -->
+    {% include 'nomz/components/premium_nav.html' %}
+
+    <!-- 2-column layout -->
+    <div class="main-content">
+        <!-- LEFT: Conversations sidebar -->
+        <div class="glass-panel sidebar">
+            <div class="sidebar-header">
+                <h2 class="sidebar-title">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    Conversations
+                </h2>
+                <button class="new-btn" onclick="openModal()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    New
+                </button>
+            </div>
+            <div class="conv-list" id="conv-list">
+                <div class="loading-dots"><span></span><span></span><span></span></div>
+            </div>
+        </div>
+
+        <!-- RIGHT: Chat panel -->
+        <div class="glass-panel chat-area">
+            <!-- Welcome state -->
+            <div class="welcome-wrap" id="welcome-state">
+                <div class="welcome-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                </div>
+                <h3>Restaurant Messages</h3>
+                <p>Select a conversation on the left, or tap <strong>+ New</strong> to message a restaurant directly.</p>
+            </div>
+
+            <!-- Chat header -->
+            <div class="chat-top" id="chat-header">
+                <div class="chat-avatar" id="chat-avatar"></div>
+                <div>
+                    <div class="chat-title" id="chat-name"></div>
+                    <div class="chat-sub">Restaurant</div>
+                </div>
+            </div>
+
+            <!-- Messages -->
+            <div class="messages-list" id="chat-messages"></div>
+
+            <!-- Input -->
+            <div class="chat-input-area" id="chat-input-area">
+                <input type="text" class="chat-input" id="chat-input" placeholder="Type a message…"
+                    onkeydown="if(event.key==='Enter') sendMessage()"/>
+                <button class="send-btn" id="send-btn" onclick="sendMessage()">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">made with ❤️ for food lovers 🍰</div>
+</div>
+
+<!-- New Conversation Modal -->
+<div class="modal-overlay" id="new-conv-modal">
+    <div class="modal-box">
+        <h3>Message a Restaurant</h3>
+        <input class="modal-search-input" id="modal-search" placeholder="Search restaurants…" oninput="filterRestaurants()"/>
+        <div class="modal-rest-list" id="rest-list">
+            <div style="padding:14px;color:#aaa;font-size:13px;">Loading…</div>
+        </div>
+        <textarea class="modal-msg-input" id="modal-first-msg" rows="2" placeholder="Type your first message…"></textarea>
+        <div class="modal-err" id="modal-err"></div>
+        <div class="modal-actions">
+            <button class="modal-cancel" onclick="closeModal()">Cancel</button>
+            <button class="modal-ok" id="modal-start-btn" onclick="startConversation()" disabled>Start Conversation</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const ME = "{{ request.user.username }}";
+let activeConvId = null;
+let pollTimer = null;
+let allRestaurants = [];
+let pickedRestaurantId = null;
+
+function csrf() {
+    const c = document.cookie.split('; ').find(r => r.startsWith('csrftoken='));
+    return c ? c.split('=')[1] : '';
+}
+async function api(url, opts = {}) {
+    return fetch(url, { ...opts, credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf(), ...(opts.headers||{}) } });
+}
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function formatTime(ts) {
+    if (!ts) return '';
+    try { return new Date(ts).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }); } catch { return ''; }
+}
+
+/* ── Conversations ── */
+async function loadConvs() {
+    try {
+        const r = await api('/api/messages/conversations/');
+        const d = await r.json();
+        const list = document.getElementById('conv-list');
+        if (!d.results || !d.results.length) {
+            list.innerHTML = '<div style="padding:2rem;text-align:center;color:#aaa;font-size:13px;">No conversations yet.<br>Tap <b>+ New</b> to start one!</div>';
+            return;
+        }
+        list.innerHTML = d.results.map((c, i) => {
+            const name = esc(c.restaurant_name || 'Restaurant');
+            const preview = esc((c.last_message ? c.last_message.body : 'No messages yet').substring(0, 40));
+            const initial = (c.restaurant_name || 'R').charAt(0).toUpperCase();
+            return `<div class="conv-item ${c.id===activeConvId?'active':''}" data-id="${c.id}" onclick="selectConv(${c.id},'${name}')" style="animation-delay:${i*0.04}s">
+                <div class="conv-avatar">${initial}</div>
+                <div class="conv-info">
+                    <div class="conv-name">${name}</div>
+                    <div class="conv-preview">${preview}</div>
+                </div>
+            </div>`;
+        }).join('');
+    } catch(e) { console.error(e); }
+}
+
+/* ── Select conversation ── */
+async function selectConv(id, name) {
+    activeConvId = id;
+    document.getElementById('welcome-state').style.display = 'none';
+    document.getElementById('chat-header').classList.add('visible');
+    document.getElementById('chat-messages').classList.add('visible');
+    document.getElementById('chat-input-area').classList.add('visible');
+    document.getElementById('chat-avatar').textContent = (name||'R').charAt(0).toUpperCase();
+    document.getElementById('chat-name').textContent = name || 'Restaurant';
+    document.querySelectorAll('.conv-item').forEach(el => el.classList.toggle('active', parseInt(el.dataset.id)===id));
+    await fetchMessages(id);
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(() => fetchMessages(id), 5000);
+}
+
+async function fetchMessages(id) {
+    try {
+        const r = await api(`/api/messages/conversations/${id}/`);
+        const d = await r.json();
+        const container = document.getElementById('chat-messages');
+        const atBottom = container.scrollHeight - container.clientHeight <= container.scrollTop + 5;
+        if (!d.messages || !d.messages.length) {
+            container.innerHTML = '<div style="text-align:center;color:#aaa;padding:2rem;font-size:13px;">No messages yet. Start the conversation!</div>';
+        } else {
+            container.innerHTML = d.messages.map(m => {
+                const isMe = m.sender_username === ME;
+                return `<div class="msg-wrap ${isMe?'me':'them'}">
+                    ${!isMe ? `<div class="msg-sender">${esc(m.sender_username)}</div>` : ''}
+                    <div class="msg-bubble ${isMe?'me':'them'}">${esc(m.body)}
+                        <div class="msg-time">${formatTime(m.created_at)}</div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+        if (atBottom || (d.messages||[]).length <= 10) container.scrollTop = container.scrollHeight;
+    } catch(e) { console.error(e); }
+}
+
+/* ── Send ── */
+async function sendMessage() {
+    const input = document.getElementById('chat-input');
+    const body = input.value.trim();
+    if (!body || !activeConvId) return;
+    const btn = document.getElementById('send-btn');
+    btn.disabled = true; input.value = '';
+    try {
+        const r = await api(`/api/messages/conversations/${activeConvId}/send/`, { method:'POST', body: JSON.stringify({message:body}) });
+        if (r.ok) { await fetchMessages(activeConvId); await loadConvs(); }
+        else { input.value = body; }
+    } catch(_) { input.value = body; }
+    finally { btn.disabled = false; input.focus(); }
+}
+
+/* ── Modal ── */
+async function openModal() {
+    document.getElementById('new-conv-modal').classList.add('open');
+    document.getElementById('modal-err').textContent = '';
+    document.getElementById('modal-first-msg').value = '';
+    document.getElementById('modal-search').value = '';
+    pickedRestaurantId = null;
+    document.getElementById('modal-start-btn').disabled = true;
+    document.getElementById('rest-list').innerHTML = '<div style="padding:14px;color:#aaa;font-size:13px;">Loading…</div>';
+    try {
+        const r = await api('/api/search/?q=');
+        const d = await r.json();
+        allRestaurants = (d.results||[]).filter(r => r.messaging_enabled !== false);
+    } catch(_) {}
+    filterRestaurants();
+}
+function closeModal() { document.getElementById('new-conv-modal').classList.remove('open'); }
+document.getElementById('new-conv-modal').addEventListener('click', function(e) { if(e.target===this) closeModal(); });
+
+function filterRestaurants() {
+    const q = document.getElementById('modal-search').value.toLowerCase().trim();
+    const hits = q ? allRestaurants.filter(r => r.name.toLowerCase().includes(q)||(r.neighborhood||'').toLowerCase().includes(q)||(r.cuisine||'').toLowerCase().includes(q)) : allRestaurants;
+    const container = document.getElementById('rest-list');
+    if (!hits.length) {
+        container.innerHTML = allRestaurants.length === 0
+            ? '<div style="padding:16px;color:#aaa;font-size:12px;text-align:center;">No restaurants currently accept messages.</div>'
+            : '<div style="padding:14px;color:#aaa;font-size:13px;">No matches found.</div>';
+        return;
+    }
+    container.innerHTML = hits.slice(0, 60).map(r => `
+        <div class="rest-pick" data-rid="${r.id}" onclick="pickRestaurant(${r.id}, this)">
+            <div class="rest-pick-name">${esc(r.name)}</div>
+            <div class="rest-pick-sub">${r.neighborhood ? esc(r.neighborhood) : ''}${r.cuisine ? (r.neighborhood?' · ':'')+esc(r.cuisine) : ''}</div>
+        </div>`).join('');
+}
+
+function pickRestaurant(id, el) {
+    pickedRestaurantId = id;
+    document.querySelectorAll('.rest-pick').forEach(e => e.classList.remove('selected'));
+    el.classList.add('selected');
+    document.getElementById('modal-start-btn').disabled = false;
+}
+
+async function startConversation() {
+    if (!pickedRestaurantId) return;
+    const msg = document.getElementById('modal-first-msg').value.trim();
+    if (!msg) { document.getElementById('modal-err').textContent = 'Please type a first message.'; return; }
+    const btn = document.getElementById('modal-start-btn');
+    btn.disabled = true; btn.textContent = 'Starting…';
+    document.getElementById('modal-err').textContent = '';
+    try {
+        const r = await api('/api/messages/conversations/start/', { method:'POST', body: JSON.stringify({restaurant_id:pickedRestaurantId, message:msg}) });
+        const d = await r.json();
+        if (r.ok) {
+            closeModal(); await loadConvs();
+            const rest = allRestaurants.find(x => x.id === pickedRestaurantId);
+            selectConv(d.conversation_id, rest ? rest.name : 'Restaurant');
+        } else { document.getElementById('modal-err').textContent = d.error || 'Failed to start conversation.'; }
+    } catch(_) { document.getElementById('modal-err').textContent = 'Network error.'; }
+    finally { btn.disabled = false; btn.textContent = 'Start Conversation'; }
+}
+
+async function handleLogout() {
+    await api('/api/auth/logout/', { method:'POST' });
+    window.location.href = '/home/';
+}
+
+loadConvs();
+</script>
+{% endblock %}

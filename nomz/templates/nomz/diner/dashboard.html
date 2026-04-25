@@ -1,0 +1,218 @@
+{% extends 'nomz/base.html' %}
+{% load static %}
+{% block title %}Dashboard — nomz{% endblock %}
+
+{% block main_layout %}
+<style>
+    nav.navbar, body > footer { display: none !important; }
+    body { background: var(--paper); }
+</style>
+
+{% include 'nomz/components/premium_nav.html' %}
+
+<main style="max-width:1200px;margin:0 auto;padding:48px 6vw;">
+
+    <!-- Welcome -->
+    <div style="border-bottom:1px solid var(--rule);padding-bottom:24px;margin-bottom:40px;">
+        <span class="editorial-label">Welcome back</span>
+        <h1 style="font-family:var(--font-serif);font-size:clamp(2rem,5vw,3.5rem);font-weight:900;color:var(--ink);margin-top:8px;line-height:0.95;">
+            {{ user.username }}
+        </h1>
+        <p style="font-size:13px;color:var(--mid);margin-top:10px;letter-spacing:0.1em;">Discover amazing restaurants near you</p>
+    </div>
+
+    <!-- Search -->
+    <form class="animate-fadeInUp stagger-1" onsubmit="handleSearchSubmit(event)" style="margin-bottom:48px;">
+        <div style="display:flex;gap:0;border:1px solid var(--ink);overflow:hidden;">
+            <input type="text" id="search-input" placeholder="Search restaurants, cuisines, dishes…"
+                style="flex:1;border:none;padding:14px 20px;font-family:var(--font-sans);font-size:15px;background:var(--paper);color:var(--ink);outline:none;">
+            <button type="submit" class="btn btn-primary" style="border-radius:0;white-space:nowrap;">Search</button>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+            <select id="cuisine-filter" style="flex:1;border:1px solid var(--rule);background:var(--paper);padding:10px 12px;font-family:var(--font-sans);font-size:13px;color:var(--ink);min-width:0;">
+                <option value="">All Cuisines</option>
+                <option value="American">American</option>
+                <option value="Asian">Asian</option>
+                <option value="Italian">Italian</option>
+                <option value="Mexican">Mexican</option>
+                <option value="Indian">Indian</option>
+                <option value="French">French</option>
+                <option value="Japanese">Japanese</option>
+                <option value="Chinese">Chinese</option>
+                <option value="Thai">Thai</option>
+                <option value="Mediterranean">Mediterranean</option>
+                <option value="Fusion">Fusion</option>
+                <option value="Vegetarian">Vegetarian</option>
+                <option value="Vegan">Vegan</option>
+            </select>
+            <select id="location-filter" style="flex:1;border:1px solid var(--rule);background:var(--paper);padding:10px 12px;font-family:var(--font-sans);font-size:13px;color:var(--ink);min-width:0;">
+                <option value="">All Locations</option>
+                <option value="Manhattan">Manhattan</option>
+                <option value="Brooklyn">Brooklyn</option>
+                <option value="Queens">Queens</option>
+                <option value="The Bronx">The Bronx</option>
+                <option value="Staten Island">Staten Island</option>
+            </select>
+        </div>
+    </form>
+
+    <!-- Recommendations -->
+    <section class="animate-fadeInUp stagger-2" style="margin-bottom:48px;">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;border-bottom:2px solid var(--ink);padding-bottom:12px;margin-bottom:24px;">
+            <div>
+                <span class="editorial-label">For you</span>
+                <h2 style="font-family:var(--font-serif);font-size:1.75rem;font-weight:900;color:var(--ink);">Recommended</h2>
+            </div>
+            <a href="/recommendations/" class="btn btn-outline btn-sm">See all</a>
+        </div>
+        <div id="rec-message" style="display:none;font-size:13px;color:var(--mid);padding:12px 0;"></div>
+        <div id="recommendations-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);">
+            <div class="skel-card"></div>
+            <div class="skel-card"></div>
+            <div class="skel-card"></div>
+        </div>
+    </section>
+
+    <!-- Popular Cuisines -->
+    <section class="animate-fadeInUp stagger-3" style="margin-bottom:48px;">
+        <div style="border-bottom:2px solid var(--ink);padding-bottom:12px;margin-bottom:24px;">
+            <span class="editorial-label">Explore by</span>
+            <h2 style="font-family:var(--font-serif);font-size:1.75rem;font-weight:900;color:var(--ink);">Popular Cuisines</h2>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--rule);border:1px solid var(--rule);">
+            <button type="button" class="cuisine-btn" onclick="searchCuisine('Italian')">Italian</button>
+            <button type="button" class="cuisine-btn" onclick="searchCuisine('Japanese')">Japanese</button>
+            <button type="button" class="cuisine-btn" onclick="searchCuisine('Mexican')">Mexican</button>
+            <button type="button" class="cuisine-btn" onclick="searchCuisine('Indian')">Indian</button>
+        </div>
+    </section>
+
+</main>
+
+<footer style="border-top:2px solid var(--ink);padding:20px 6vw;display:flex;justify-content:space-between;align-items:center;">
+    <span style="font-family:var(--font-serif);font-style:italic;font-size:13px;color:var(--tan);">Good food, always.</span>
+    <span style="font-size:10px;letter-spacing:0.3em;text-transform:uppercase;color:var(--mid);">nomz</span>
+</footer>
+
+<style>
+.skel-card {
+    background: rgba(200,169,110,0.08);
+    min-height: 120px;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
+.cuisine-btn {
+    background: var(--paper);
+    border: none;
+    cursor: pointer;
+    padding: 28px 20px;
+    font-family: var(--font-serif);
+    font-size: 1.125rem;
+    font-weight: 900;
+    color: var(--ink);
+    text-align: center;
+    transition: background 0.2s, color 0.2s;
+}
+.cuisine-btn:hover { background: var(--ink); color: var(--paper); }
+.rec-card {
+    background: var(--paper);
+    padding: 24px;
+    cursor: pointer;
+    transition: background 0.2s;
+    border: none;
+    text-align: left;
+    width: 100%;
+}
+.rec-card:hover { background: rgba(200,169,110,0.1); }
+.rec-badge {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--red);
+    margin-bottom: 8px;
+    display: block;
+}
+.rec-name {
+    font-family: var(--font-serif);
+    font-size: 1.125rem;
+    font-weight: 900;
+    color: var(--ink);
+    margin-bottom: 6px;
+}
+.rec-meta { font-size: 12px; color: var(--mid); letter-spacing: 0.1em; }
+@media (max-width: 640px) {
+    #recommendations-grid { grid-template-columns: 1fr; }
+    [style*="grid-template-columns:repeat(4"] { grid-template-columns: repeat(2, 1fr) !important; }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let recommendations = [];
+let cancelled = false;
+
+async function loadRecommendations() {
+    try {
+        const response = await apiFetch('/api/recommendations/');
+        if (!response.ok || cancelled) return;
+        const data = await response.json();
+        if (cancelled) return;
+        const recMessageEl = document.getElementById('rec-message');
+        const gridEl = document.getElementById('recommendations-grid');
+        if (data.requires_preferences) {
+            recMessageEl.textContent = 'Set your preferences in your profile to see personalized picks here.';
+            recMessageEl.style.display = 'block';
+            gridEl.innerHTML = '';
+            return;
+        }
+        if (data.message) { recMessageEl.textContent = data.message; recMessageEl.style.display = 'block'; }
+        else { recMessageEl.style.display = 'none'; }
+        const restaurantList = Array.isArray(data.restaurants) ? data.restaurants.slice(0, 3) : [];
+        recommendations = restaurantList;
+        renderRecommendations(restaurantList);
+    } catch (error) {
+        console.error('Error loading recommendations:', error);
+        if (!cancelled) { document.getElementById('recommendations-grid').innerHTML = ''; }
+    }
+}
+
+function renderRecommendations(restaurants) {
+    const gridEl = document.getElementById('recommendations-grid');
+    if (restaurants.length === 0) { gridEl.innerHTML = ''; return; }
+    gridEl.innerHTML = restaurants.map((r) => `
+        <button class="rec-card" onclick="window.location.href='/restaurant/${r.id}/'">
+            ${r.recommended_by ? `<span class="rec-badge">Recommended by ${escapeHtml(r.recommended_by)}</span>` : ''}
+            <div class="rec-name">${escapeHtml(r.name)}</div>
+            <div class="rec-meta">${escapeHtml(r.cuisine)} · ${escapeHtml(r.price_label)}${r.neighborhood ? ` · ${escapeHtml(r.neighborhood)}` : ''}</div>
+        </button>
+    `).join('');
+}
+
+function handleSearchSubmit(event) {
+    event.preventDefault();
+    const searchInput = document.getElementById('search-input').value.trim();
+    const cuisineFilter = document.getElementById('cuisine-filter').value;
+    const locationFilter = document.getElementById('location-filter').value;
+    const parts = [searchInput, cuisineFilter].filter(Boolean).join(' ');
+    const params = new URLSearchParams();
+    if (parts) params.set('q', parts);
+    if (locationFilter) params.set('neighborhood', locationFilter);
+    window.location.href = `/search/?${params.toString()}`;
+}
+
+function searchCuisine(cuisine) {
+    window.location.href = `/search/?q=${encodeURIComponent(cuisine)}`;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+window.addEventListener('beforeunload', () => { cancelled = true; });
+document.addEventListener('DOMContentLoaded', () => { loadRecommendations(); });
+</script>
+{% endblock %}

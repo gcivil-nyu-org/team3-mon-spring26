@@ -1,6 +1,6 @@
 from django.http import HttpResponseForbidden, JsonResponse
 from django.utils import timezone
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
@@ -787,3 +787,66 @@ def toggle_shared_restaurant(request, username=None, conversation_id=None):
     if conversation_id:
         return redirect("friends_chat_detail_by_id", conversation_id=conversation_id)
     return redirect("friends_chat_detail", username=username)
+
+
+@login_required
+def friends_chat_index_v2(request):
+    """Compatibility wrapper for legacy v2 chat index routes."""
+    return render(request, "nomz/diner/friends_chat.html")
+
+
+@login_required
+def friends_chat_detail_v2(request, username=None, conversation_id=None):
+    """Compatibility wrapper for legacy v2 chat detail routes."""
+    context = {
+        "username": username,
+        "conversation_id": conversation_id,
+    }
+    return render(request, "nomz/diner/friends_chat.html", context)
+
+
+def create_group_chat_v2(request):
+    return create_group_chat(request)
+
+
+def manage_group_member_v2(request, conversation_id):
+    return manage_group_member(request, conversation_id)
+
+
+def leave_group_v2(request, conversation_id):
+    return leave_group(request, conversation_id)
+
+
+def recommend_friend_restaurant_v2(request, username=None, conversation_id=None):
+    return recommend_friend_restaurant(
+        request, username=username, conversation_id=conversation_id
+    )
+
+
+def toggle_shared_restaurant_v2(request, username=None, conversation_id=None):
+    return toggle_shared_restaurant(
+        request, username=username, conversation_id=conversation_id
+    )
+
+
+@login_required
+def seed_restaurants_v2(request):
+    """
+    Backward-compatible placeholder for removed seed endpoint.
+    """
+    return JsonResponse(
+        {"detail": "Restaurant seeding endpoint is not available in this environment."},
+        status=501,
+    )
+
+
+def restaurant_search_api_v2(request):
+    from .spa_api import restaurant_search_api
+
+    return restaurant_search_api(request)
+
+
+def diner_search_api_v2(request):
+    from .spa_api import friends_chat_search_users_api
+
+    return friends_chat_search_users_api(request)

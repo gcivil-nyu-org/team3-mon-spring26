@@ -1,0 +1,516 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>n o m z</title>
+<link rel="icon" type="image/x-icon" href="{% static 'nomz/favicon.ico' %}">
+<link rel="stylesheet" href="{% static 'nomz/css/main.css' %}">
+<style>
+  html, body { width: 100%; min-height: 100%; }
+
+  /* ── HERO PAGE ── */
+  .page {
+    width: 100vw;
+    height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    padding: 0 6vw;
+  }
+
+  /* TOP STRIP */
+  .top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 22px 0 18px;
+    border-bottom: 2px solid var(--ink);
+    animation: slideDown 0.8s cubic-bezier(0.16,1,0.3,1) both;
+  }
+
+  .top-left {
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--mid);
+  }
+
+  .top-center {
+    display: flex;
+    gap: 24px;
+    font-size: 11px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+
+  .top-center a {
+    text-decoration: none;
+    color: var(--ink);
+    transition: color 0.2s;
+  }
+  .top-center a:hover { color: var(--red); }
+
+  .top-right {
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--mid);
+  }
+
+  /* HERO */
+  .hero {
+    display: grid;
+    grid-template-columns: 1fr 2.4fr 1fr;
+    gap: 0;
+    align-items: center;
+    padding: 0;
+    position: relative;
+  }
+
+  .hero::before,
+  .hero::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0;
+    height: 1px;
+    background: var(--ink);
+    opacity: 0.15;
+  }
+  .hero::before { top: 36%; }
+  .hero::after  { top: 64%; }
+
+  /* Left col */
+  .hero-left {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    border-right: 1px solid rgba(28,18,9,0.15);
+    padding-right: 4vw;
+    animation: fadeUp 1s 0.3s both;
+  }
+
+  .sidebar-label {
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--red);
+    font-weight: 700;
+  }
+
+  .sidebar-text {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: clamp(14px, 1.4vw, 20px);
+    line-height: 1.5;
+    color: var(--mid);
+  }
+
+  .sidebar-stat {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink);
+    padding-top: 12px;
+    border-top: 1px solid rgba(28,18,9,0.15);
+  }
+  .sidebar-stat strong {
+    font-size: 28px;
+    display: block;
+    letter-spacing: 0;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 4px;
+    font-family: var(--font-sans);
+  }
+
+  /* Center col */
+  .hero-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 0 4vw;
+    animation: fadeUp 1s 0.15s both;
+  }
+
+  .issue-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 10px;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    color: var(--mid);
+    margin-bottom: 20px;
+  }
+  .issue-label::before,
+  .issue-label::after {
+    content: '';
+    width: 28px;
+    height: 1px;
+    background: var(--tan);
+  }
+
+  .headline {
+    font-family: var(--font-serif);
+    font-weight: 900;
+    font-size: clamp(72px, 13vw, 180px);
+    line-height: 0.82;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    position: relative;
+  }
+
+  .headline::before {
+    content: 'nomz';
+    position: absolute;
+    top: 5px; left: 5px;
+    color: transparent;
+    -webkit-text-stroke: 1px var(--red);
+    opacity: 0.35;
+    pointer-events: none;
+  }
+
+  .sub-headline {
+    font-size: clamp(12px, 1.6vw, 20px);
+    letter-spacing: 0.5em;
+    text-transform: uppercase;
+    color: var(--mid);
+    margin-top: 20px;
+    margin-bottom: 8px;
+    font-weight: 300;
+  }
+
+  /* Right col */
+  .hero-right {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    border-left: 1px solid rgba(28,18,9,0.15);
+    padding-left: 4vw;
+    animation: fadeUp 1s 0.3s both;
+  }
+
+  .feature-box {
+    padding: 16px;
+    border: 1px solid rgba(28,18,9,0.12);
+    background: rgba(200,169,110,0.08);
+  }
+
+  .feature-box .fb-cat {
+    font-size: 9px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--red);
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  .feature-box .fb-title {
+    font-family: var(--font-serif);
+    font-size: clamp(13px, 1.2vw, 17px);
+    line-height: 1.3;
+  }
+
+  /* BOTTOM STRIP */
+  .bottom-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-top: 2px solid var(--ink);
+    padding: 16px 0 22px;
+    animation: slideUp 0.8s cubic-bezier(0.16,1,0.3,1) both;
+  }
+
+  .ticker {
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--mid);
+    display: flex;
+    gap: 24px;
+  }
+
+  .ticker span::before {
+    content: '⁂  ';
+    color: var(--red);
+  }
+
+  .bottom-right {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 13px;
+    color: var(--tan);
+  }
+
+  /* ── DEVELOPERS SECTION ── */
+  .developers-section {
+    padding: 80px 6vw 80px;
+    border-top: 2px solid var(--ink);
+    background: var(--paper);
+    position: relative;
+    z-index: 1;
+  }
+
+  .dev-section-header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 56px;
+  }
+
+  .dev-section-label {
+    font-size: 10px;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    color: var(--red);
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .dev-section-rule {
+    flex: 1;
+    height: 1px;
+    background: rgba(28,18,9,0.15);
+  }
+
+  .dev-section-title {
+    font-family: var(--font-serif);
+    font-weight: 900;
+    font-size: clamp(32px, 5vw, 64px);
+    line-height: 0.9;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    margin-bottom: 12px;
+  }
+
+  .dev-section-sub {
+    font-size: 13px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--mid);
+    font-weight: 300;
+  }
+
+  .dev-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: rgba(28,18,9,0.15);
+    border: 1px solid rgba(28,18,9,0.15);
+    margin-bottom: 1px;
+  }
+
+  .dev-grid-row2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1px;
+    background: rgba(28,18,9,0.15);
+    border: 1px solid rgba(28,18,9,0.15);
+    border-top: none;
+    max-width: calc(66.666% + 1px);
+  }
+
+  .dev-card {
+    background: var(--paper);
+    padding: 36px 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .dev-card-num {
+    font-size: 9px;
+    letter-spacing: 0.3em;
+    color: var(--tan);
+    font-weight: 700;
+  }
+
+  .dev-avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: rgba(200,169,110,0.2);
+    border: 1px solid var(--tan);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-serif);
+    font-size: 20px;
+    font-weight: 900;
+    color: var(--tan);
+    margin-bottom: 4px;
+  }
+
+  .dev-name {
+    font-family: var(--font-serif);
+    font-size: clamp(16px, 1.6vw, 22px);
+    font-weight: 900;
+    line-height: 1.1;
+    color: var(--ink);
+  }
+
+  .dev-role {
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--red);
+    font-weight: 700;
+  }
+
+  /* Animations */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .hero {
+      grid-template-columns: 1fr;
+      grid-template-rows: auto auto auto;
+      gap: 32px;
+      padding: 32px 0;
+    }
+    .hero-left, .hero-right {
+      border: none;
+      padding: 0;
+    }
+    .hero::before, .hero::after { display: none; }
+
+    .dev-grid {
+      grid-template-columns: 1fr;
+    }
+    .dev-grid-row2 {
+      grid-template-columns: 1fr;
+      max-width: 100%;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- TOP -->
+  <header class="top-bar">
+    <span class="top-left">Vol. IV &nbsp;·&nbsp; Issue 12</span>
+    <nav class="top-center">
+      <a href="/signin/">Sign In</a>
+      <a href="/register/">Register</a>
+    </nav>
+    <span class="top-right">{% now "l, F j, Y" %}</span>
+  </header>
+
+  <!-- HERO -->
+  <section class="hero">
+
+    <div class="hero-left">
+      <span class="sidebar-label">This Week</span>
+      <p class="sidebar-text">"The restaurants the internet doesn't want you to find."</p>
+      <div class="sidebar-stat">
+        <strong>340+</strong>
+        Restaurants in the archive
+      </div>
+      <div class="sidebar-stat">
+        <strong>12</strong>
+        Cuisines covered
+      </div>
+    </div>
+
+    <div class="hero-center">
+      <span class="issue-label">food &amp; culture</span>
+      <h1 class="headline">nomz</h1>
+      <p class="sub-headline">eat. explore. repeat</p>
+    </div>
+
+    <div class="hero-right">
+      <div class="feature-box">
+        <p class="fb-cat">For Diners</p>
+        <p class="fb-title">Find your next favourite restaurant, read reviews, and explore local eateries</p>
+      </div>
+      <div class="feature-box">
+        <p class="fb-cat">For Restaurants</p>
+        <p class="fb-title">Showcase your menu, connect with food lovers, and grow your business</p>
+      </div>
+      <div class="feature-box">
+        <p class="fb-cat">Community</p>
+        <p class="fb-title">Share dining experiences with friends and discover hidden gems together</p>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- BOTTOM -->
+  <footer class="bottom-bar">
+    <div class="ticker">
+      <span>Seasonal</span>
+      <span>Handcrafted</span>
+      <span>No fluff</span>
+      <span>Real flavor</span>
+    </div>
+    <span class="bottom-right">Good food, always.</span>
+  </footer>
+
+</div>
+
+<!-- DEVELOPERS SECTION -->
+<section class="developers-section">
+
+  <div class="dev-section-header">
+    <span class="dev-section-label">The Team</span>
+    <div class="dev-section-rule"></div>
+  </div>
+
+  <h2 class="dev-section-title">Meet the<br>Developers</h2>
+  <p class="dev-section-sub" style="margin-bottom: 48px;">nomz was built by a passionate team who love food and technology</p>
+
+  <div class="dev-grid">
+    <div class="dev-card">
+      <span class="dev-card-num">01</span>
+      <div class="dev-avatar">A</div>
+      <div class="dev-name">Ananya Agarwal</div>
+      <div class="dev-role">UI/UX Designer &amp; Developer</div>
+    </div>
+    <div class="dev-card">
+      <span class="dev-card-num">02</span>
+      <div class="dev-avatar">G</div>
+      <div class="dev-name">Gurleen Kaur</div>
+      <div class="dev-role">Software Developer</div>
+    </div>
+    <div class="dev-card">
+      <span class="dev-card-num">03</span>
+      <div class="dev-avatar">D</div>
+      <div class="dev-name">Darsh Shani</div>
+      <div class="dev-role">Data Engineer &amp; Developer</div>
+    </div>
+  </div>
+
+  <div class="dev-grid-row2">
+    <div class="dev-card">
+      <span class="dev-card-num">04</span>
+      <div class="dev-avatar">V</div>
+      <div class="dev-name">Vritika Srivastava</div>
+      <div class="dev-role">Software Developer</div>
+    </div>
+    <div class="dev-card">
+      <span class="dev-card-num">05</span>
+      <div class="dev-avatar">A</div>
+      <div class="dev-name">Ashik M John</div>
+      <div class="dev-role">Software Developer</div>
+    </div>
+  </div>
+
+</section>
+
+</body>
+</html>
