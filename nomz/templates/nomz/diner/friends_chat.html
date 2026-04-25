@@ -124,6 +124,62 @@
     }
     .hint-chip:hover { background: rgba(212, 43, 43,0.15); }
 
+    /* Chat Messages */
+    .chat-top {
+        padding: 1rem 1.5rem; border-bottom: 1px solid rgba(212,43,43,0.1);
+        display: none; align-items: center; gap: 12px; flex-shrink: 0;
+    }
+    .chat-top.visible { display: flex; }
+    .chat-avatar {
+        width: 38px; height: 38px; border-radius: 50%;
+        background: linear-gradient(135deg, rgba(212,43,43,0.15), rgba(212,43,43,0.3));
+        display: flex; align-items: center; justify-content: center;
+        color: var(--red); font-weight: 700; font-size: 15px;
+        border: 2px solid rgba(212,43,43,0.2); flex-shrink: 0;
+    }
+    .chat-title { font-size: 15px; font-weight: 700; color: #333; }
+    .chat-sub { font-size: 11px; color: #aaa; }
+
+    .messages-list {
+        flex: 1; overflow-y: auto; padding: 1.25rem;
+        display: none; flex-direction: column; gap: 0.875rem;
+    }
+    .messages-list.visible { display: flex; }
+    .messages-list::-webkit-scrollbar { width: 4px; }
+    .messages-list::-webkit-scrollbar-thumb { background: rgba(212,43,43,0.2); border-radius: 4px; }
+
+    .msg-wrap { display: flex; flex-direction: column; }
+    .msg-wrap.me { align-items: flex-end; }
+    .msg-wrap.them { align-items: flex-start; }
+    .msg-sender { font-size: 10px; color: #aaa; margin-bottom: 3px; font-weight: 600; }
+    .msg-bubble {
+        max-width: 72%; padding: 9px 13px; border-radius: 18px;
+        font-size: 13px; line-height: 1.5; word-break: break-word; animation: fadeIn 0.3s ease;
+    }
+    .msg-bubble.me { background: var(--red); color: white; border-bottom-right-radius: 6px; }
+    .msg-bubble.them { background: rgba(255,255,255,0.9); color: #333; border: 1px solid rgba(212,43,43,0.1); border-bottom-left-radius: 6px; }
+    .msg-time { font-size: 10px; opacity: 0.55; margin-top: 3px; text-align: right; }
+
+    .chat-input-area {
+        padding: 0.875rem 1.25rem; border-top: 1px solid rgba(212,43,43,0.1);
+        display: none; gap: 10px; align-items: center; flex-shrink: 0;
+    }
+    .chat-input-area.visible { display: flex; }
+    .chat-input {
+        flex: 1; padding: 9px 14px; border: 1px solid rgba(212,43,43,0.2);
+        border-radius: 14px; font-size: 13px; font-family: var(--font-sans);
+        outline: none; background: rgba(255,255,255,0.8); color: #333; transition: border-color 0.2s;
+    }
+    .chat-input:focus { border-color: var(--red); }
+    .chat-input::placeholder { color: #bbb; }
+    .send-btn {
+        padding: 9px 20px; background: var(--red); color: white; border: none;
+        border-radius: 14px; font-size: 13px; font-weight: 600; cursor: pointer;
+        font-family: var(--font-sans); transition: background 0.2s;
+    }
+    .send-btn:hover { background: #b82020; }
+    .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
     /* ── Right panel ── */
     .features-area { width: 240px; flex-shrink: 0; display: flex; flex-direction: column; gap: 1rem; overflow-y: auto; }
     .features-area::-webkit-scrollbar { width: 4px; }
@@ -196,10 +252,10 @@
                     Conversations
                 </h2>
                 <div class="sidebar-btn-group">
-                    <button class="sidebar-icon-btn" onclick="openNewChatModal()" title="New Chat" style="padding:5px 12px;">
+                    <button class="sidebar-icon-btn" onclick="openGroupChatModal()" title="New Group Chat" style="padding:5px 12px;">
                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                     </button>
-                    <button class="sidebar-icon-btn" onclick="openNewChatModal()" title="New Chat">+</button>
+                    <button class="sidebar-icon-btn" onclick="openNewChatModal()" title="New 1-on-1 Chat">+</button>
                 </div>
             </div>
             <div class="conv-list" id="conv-list">
@@ -209,7 +265,7 @@
 
         <!-- MIDDLE: Welcome state -->
         <div class="glass-panel chat-area">
-            <div class="welcome-wrap">
+            <div class="welcome-wrap" id="welcome-state">
                 <div class="welcome-icon">
                     <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                 </div>
@@ -220,26 +276,83 @@
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                         New Chat
                     </div>
-                    <div class="hint-chip" onclick="openNewChatModal()">
+                    <div class="hint-chip" onclick="openGroupChatModal()">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                         Group Chat
                     </div>
                 </div>
             </div>
+
+            <!-- Chat header -->
+            <div class="chat-top" id="chat-header">
+                <div class="chat-avatar" id="chat-avatar"></div>
+                <div>
+                    <div class="chat-title" id="chat-name"></div>
+                    <div class="chat-sub" id="chat-sub">Friend</div>
+                </div>
+            </div>
+
+            <!-- Messages -->
+            <div class="messages-list" id="chat-messages"></div>
+
+            <!-- Input -->
+            <div class="chat-input-area" id="chat-input-area">
+                <input type="text" class="chat-input" id="chat-input" placeholder="Type a message…"
+                    onkeydown="if(event.key==='Enter') sendMessage()"/>
+                <button class="send-btn" id="send-btn" onclick="sendMessage()">Send</button>
+            </div>
         </div>
 
         <!-- RIGHT: Feature placeholders -->
         <div class="features-area">
-            <div class="right-card">
+            <div class="right-card" id="recommend-card" style="display:none;">
                 <div class="right-card-header">Recommend Restaurant</div>
-                <div class="right-card-body">
-                    <p class="right-placeholder">Select a conversation to recommend a restaurant to a friend.</p>
+                <div class="right-card-body" id="recommend-body">
+                    <div style="display:flex;flex-direction:column;gap:8px;">
+                        <input type="text" id="rec-rest-input" placeholder="Search restaurant..." class="modal-input" oninput="filterRecRestaurants()" style="margin-bottom:0;" autocomplete="off" />
+                        <div id="rec-rest-list" style="max-height:120px;overflow-y:auto;border:1px solid rgba(212,43,43,0.15);border-radius:8px;display:none;background:white;position:absolute;z-index:100;width:calc(100% - 28px);box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div>
+                        <textarea id="rec-msg-input" placeholder="Why do you recommend this?" class="modal-input" style="resize:none;height:60px;margin-bottom:0;"></textarea>
+                        <div id="rec-err" class="modal-err" style="display:none;margin:0;"></div>
+                        <button class="send-btn" id="rec-send-btn" onclick="sendRecommendation()" disabled style="width:100%;">Recommend</button>
+                    </div>
                 </div>
             </div>
-            <div class="right-card">
+            
+            <div class="right-card" id="together-card" style="display:none;">
                 <div class="right-card-header">Together List</div>
                 <div class="right-card-body">
-                    <p class="right-placeholder">Select a conversation to view and manage your Together List.</p>
+                    <div id="together-list-items" style="margin-bottom:12px;max-height:200px;overflow-y:auto;"></div>
+                    <div style="position:relative;">
+                        <input type="text" id="tl-rest-input" placeholder="Add to list..." class="modal-input" oninput="filterTlRestaurants()" style="margin-bottom:0;width:100%;" autocomplete="off" />
+                        <div id="tl-rest-list" style="max-height:120px;overflow-y:auto;border:1px solid rgba(212,43,43,0.15);border-radius:8px;display:none;background:white;position:absolute;z-index:100;width:100%;box-shadow:0 4px 12px rgba(0,0,0,0.1);bottom:100%;"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="right-card" id="members-card" style="display:none;">
+                <div class="right-card-header">Group Members</div>
+                <div class="right-card-body">
+                    <div id="members-list-items" style="margin-bottom:12px;max-height:200px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;"></div>
+                    <div id="add-member-area" style="position:relative;margin-bottom:12px;display:none;">
+                        <input type="text" id="add-member-input" placeholder="Add member..." class="modal-input" oninput="filterAddMember()" style="margin-bottom:0;width:100%;" autocomplete="off" />
+                        <div id="add-member-list" style="max-height:120px;overflow-y:auto;border:1px solid rgba(212,43,43,0.15);border-radius:8px;display:none;background:white;position:absolute;z-index:100;width:100%;box-shadow:0 4px 12px rgba(0,0,0,0.1);bottom:100%;"></div>
+                    </div>
+                    <button id="leave-group-btn" style="width:100%;background:rgba(212,43,43,0.1);color:var(--red);border:1px solid rgba(212,43,43,0.2);padding:10px;border-radius:12px;cursor:pointer;font-weight:600;transition:all 0.2s ease;" onclick="leaveGroup()" onmouseover="this.style.background='var(--red)';this.style.color='white';" onmouseout="this.style.background='rgba(212,43,43,0.1)';this.style.color='var(--red)';">Leave Group</button>
+                </div>
+            </div>
+            
+            <div id="right-placeholder-wrap" style="display:flex;flex-direction:column;gap:1rem;">
+                <div class="right-card">
+                    <div class="right-card-header">Recommend Restaurant</div>
+                    <div class="right-card-body">
+                        <p class="right-placeholder">Select a conversation to recommend a restaurant to a friend.</p>
+                    </div>
+                </div>
+                <div class="right-card">
+                    <div class="right-card-header">Together List</div>
+                    <div class="right-card-body">
+                        <p class="right-placeholder">Select a conversation to view and manage your Together List.</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -253,18 +366,82 @@
 
 <!-- New Chat Modal -->
 <div class="modal-overlay" id="new-chat-modal">
-    <div class="modal-box">
+    <div class="modal-box" style="position:relative;">
         <h3>Start a Chat</h3>
-        <input class="modal-input" id="nc-username" placeholder="Friend's username…" onkeydown="if(event.key==='Enter') startNewChat()"/>
+        <div style="position:relative;margin-bottom:8px;">
+            <input type="text" id="nc-user-search" class="modal-input" placeholder="Search friend by username..." style="margin-bottom:0;" autocomplete="off" oninput="filterNcUsers()"/>
+            <div id="nc-user-list" style="max-height:120px;overflow-y:auto;border:1px solid rgba(212,43,43,0.15);border-radius:8px;display:none;background:white;position:absolute;z-index:100;width:100%;box-shadow:0 4px 12px rgba(0,0,0,0.1);top:100%;"></div>
+        </div>
         <div class="modal-err" id="nc-err"></div>
         <div class="modal-actions">
             <button class="modal-cancel" onclick="closeModal()">Cancel</button>
-            <button class="modal-ok" onclick="startNewChat()">Start Chat</button>
+            <button class="modal-ok" onclick="startNewChat()" id="nc-ok-btn" disabled>Start Chat</button>
+        </div>
+    </div>
+</div>
+
+<!-- Group Chat Modal -->
+<div class="modal-overlay" id="group-chat-modal">
+    <div class="modal-box" style="position:relative;">
+        <h3>Create Group Chat</h3>
+        <input class="modal-input" id="gc-name" placeholder="Group Name" style="margin-bottom:12px;"/>
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:#333;">Add Participants</div>
+        <div id="gc-selected-users" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;"></div>
+        <div style="position:relative;margin-bottom:12px;">
+            <input type="text" id="gc-user-search" class="modal-input" placeholder="Search friend..." style="margin-bottom:0;" autocomplete="off" oninput="filterGcUsers()"/>
+            <div id="gc-user-list" style="max-height:120px;overflow-y:auto;border:1px solid rgba(212,43,43,0.15);border-radius:8px;display:none;background:white;position:absolute;z-index:100;width:100%;box-shadow:0 4px 12px rgba(0,0,0,0.1);top:100%;"></div>
+        </div>
+        <div class="modal-err" id="gc-err"></div>
+        <div class="modal-actions">
+            <button class="modal-cancel" onclick="closeModal()">Cancel</button>
+            <button class="modal-ok" onclick="createGroupChat()">Create Group</button>
+        </div>
+    </div>
+</div>
+
+<!-- Leave Group Modal -->
+<div class="modal-overlay" id="leave-group-modal">
+    <div class="modal-box" style="position:relative;">
+        <h3 id="lg-title">Leave Group</h3>
+        <p id="lg-desc" style="font-size:14px;color:#555;margin-bottom:16px;">Are you sure you want to leave this group?</p>
+        
+        <div id="lg-admin-area" style="display:none;">
+            <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:#333;">Assign New Admin</div>
+            <select id="lg-new-admin" class="modal-input" style="margin-bottom:12px;padding:10px 14px;">
+            </select>
+        </div>
+        
+        <div class="modal-err" id="lg-err"></div>
+        <div class="modal-actions">
+            <button class="modal-cancel" onclick="closeModal()">Cancel</button>
+            <button class="modal-ok" onclick="confirmLeaveGroup()" style="background:var(--red);">Leave Group</button>
         </div>
     </div>
 </div>
 
 <script>
+const ME = "{{ request.user.username }}";
+const initialConvId = "{{ conversation_id|default:'' }}";
+const initialUsername = "{{ username|default:'' }}";
+let activeConvId = null;
+let activeConvIsGroup = false;
+let activeConvCreatorId = null;
+let activeConvParticipants = [];
+let myUserId = null;
+let pollTimer = null;
+let allConvs = [];
+let allRestaurants = [];
+let allOtherUsers = [];
+
+async function loadRestaurants() {
+    try {
+        const r = await api('/api/search/?q=');
+        const d = await r.json();
+        allRestaurants = d.results || [];
+    } catch(e) {}
+}
+loadRestaurants();
+
 function csrf() {
     const c = document.cookie.split('; ').find(r => r.startsWith('csrftoken='));
     return c ? c.split('=')[1] : '';
@@ -273,6 +450,10 @@ async function api(url, opts = {}) {
     return fetch(url, { ...opts, credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf(), ...(opts.headers||{}) } });
 }
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function formatTime(ts) {
+    if (!ts) return '';
+    try { return new Date(ts).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }); } catch { return ''; }
+}
 
 /* Load conversations */
 async function loadConvs() {
@@ -280,44 +461,507 @@ async function loadConvs() {
         const r = await api('/api/friends-chat/');
         const d = await r.json();
         const convs = d.conversations || [];
+        allConvs = convs;
+        allOtherUsers = d.other_users || [];
+        populateUserDropdowns();
+
         const list = document.getElementById('conv-list');
         if (!convs.length) {
             list.innerHTML = '<div class="empty-sidebar">No conversations yet.<br>Tap <b>+ New</b> to start one!</div>';
             return;
         }
         list.innerHTML = convs.map((c, i) => {
-            const name = esc(c.name || 'Chat');
-            const preview = esc((c.last_message || '').substring(0, 40));
-            const initial = (c.name || '?').charAt(0).toUpperCase();
+            const name = esc(c.other_username || c.name || 'Chat');
+            const preview = esc((c.last_message ? c.last_message.body : '').substring(0, 40));
+            const initial = (c.other_username || c.name || '?').charAt(0).toUpperCase();
             const href = c.is_group
                 ? `/friends-chat/group/${c.id}/`
                 : `/friends-chat/${esc(c.other_username || c.name)}/`;
-            return `<a href="${href}" class="conv-item" style="animation-delay:${i*0.04}s">
+                
+            const hasUnread = c.unread_count > 0;
+            const unreadBadge = hasUnread ? `<div style="background:var(--red);color:white;font-size:10px;font-weight:bold;padding:2px 6px;border-radius:10px;box-shadow:0 0 0 2px var(--paper);">${c.unread_count > 99 ? '99+' : c.unread_count}</div>` : '';
+            
+            return `<a href="${href}" class="conv-item ${c.id===activeConvId?'active':''}" style="animation-delay:${i*0.04}s" onclick="event.preventDefault(); selectConv(${c.id}, '${name}', ${c.is_group}); history.pushState({}, '', '${href}');">
                 <div class="conv-avatar">${initial}</div>
-                <div class="conv-info">
-                    <div class="conv-name">${name}</div>
-                    <div class="conv-preview">${preview || '—'}</div>
+                <div class="conv-info" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                    <div style="flex:1;min-width:0;">
+                        <div class="conv-name" style="${hasUnread ? 'font-weight:800;color:var(--red);' : ''}">${name}</div>
+                        <div class="conv-preview" style="${hasUnread ? 'font-weight:700;color:var(--ink);' : ''}">${preview || '—'}</div>
+                    </div>
+                    ${unreadBadge}
                 </div>
             </a>`;
         }).join('');
+        
+        // Auto-select if directed by URL context
+        if (initialConvId && !activeConvId) {
+            const conv = convs.find(c => c.id == initialConvId);
+            if (conv) selectConv(conv.id, conv.other_username || conv.name || 'Chat', conv.is_group);
+        } else if (initialUsername && !activeConvId) {
+            const conv = convs.find(c => c.other_username === initialUsername);
+            if (conv) selectConv(conv.id, conv.other_username || conv.name || 'Chat', conv.is_group);
+        }
+
     } catch(e) {
         document.getElementById('conv-list').innerHTML = '<div class="empty-sidebar">Could not load conversations.</div>';
     }
 }
 
-/* Modal */
+/* Select Conversation & Load Messages */
+async function selectConv(id, name, isGroup) {
+    activeConvId = id;
+    activeConvIsGroup = isGroup;
+    document.getElementById('welcome-state').style.display = 'none';
+    document.getElementById('chat-header').classList.add('visible');
+    document.getElementById('chat-messages').classList.add('visible');
+    document.getElementById('chat-input-area').classList.add('visible');
+    document.getElementById('chat-avatar').textContent = (name||'C').charAt(0).toUpperCase();
+    document.getElementById('chat-name').textContent = name || 'Chat';
+    document.getElementById('chat-sub').textContent = isGroup ? 'Group Chat' : 'Friend';
+    
+    // Show right panels
+    document.getElementById('right-placeholder-wrap').style.display = 'none';
+    document.getElementById('recommend-card').style.display = 'block';
+    document.getElementById('together-card').style.display = 'block';
+    
+    // Reset recommend inputs
+    document.getElementById('rec-rest-input').value = '';
+    document.getElementById('rec-msg-input').value = '';
+    pickedRecRestId = null;
+    updateRecBtn();
+    
+    // Update active class
+    const links = document.getElementById('conv-list').querySelectorAll('.conv-item');
+    links.forEach(l => {
+        const url = l.getAttribute('href');
+        if (url.includes(`/group/${id}/`) || (l.querySelector('.conv-name').textContent === name && !isGroup)) {
+            l.classList.add('active');
+        } else {
+            l.classList.remove('active');
+        }
+    });
+
+    await fetchMessages(id);
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(() => fetchMessages(id), 5000);
+}
+
+async function fetchMessages(id) {
+    try {
+        const r = await api(`/api/friends-chat/${id}/`);
+        const d = await r.json();
+        const container = document.getElementById('chat-messages');
+        const atBottom = container.scrollHeight - container.clientHeight <= container.scrollTop + 5;
+        if (!d.messages || !d.messages.length) {
+            container.innerHTML = '<div style="text-align:center;color:#aaa;padding:2rem;font-size:13px;">No messages yet. Say hello!</div>';
+        } else {
+            container.innerHTML = d.messages.map(m => {
+                const isMe = m.sender_username === ME;
+                const rec = m.restaurant_recommendation;
+                let body = esc(m.body);
+                if (rec) {
+                    const isShared = (d.shared_restaurants || []).some(sr => sr.restaurant_id === rec.id);
+                    const btn2Label = isShared ? 'Untogether' : 'Together';
+                    const btn2Action = isShared ? 'remove' : 'add';
+                    
+                    const titleColor = isMe ? 'rgba(255,255,255,0.9)' : 'var(--red)';
+                    const nameColor = isMe ? 'white' : 'var(--ink)';
+                    const btn1Bg = isMe ? 'white' : 'var(--red)';
+                    const btn1Text = isMe ? 'var(--red)' : 'white';
+                    const btn2Bg = isMe ? 'rgba(255,255,255,0.2)' : 'white';
+                    const btn2Text = isMe ? 'white' : 'var(--red)';
+
+                    body += `
+                        <div style="margin-top:12px;padding:14px;border:1px solid ${isMe ? 'rgba(255,255,255,0.3)' : 'rgba(212,43,43,0.15)'}; background:${isMe ? 'rgba(255,255,255,0.1)' : 'white'}; border-radius:12px; min-width:260px; box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+                            <div style="font-size:11px;font-weight:700;display:flex;align-items:center;gap:6px;margin-bottom:6px;color:${titleColor};text-transform:uppercase;letter-spacing:0.5px;">
+                                🌟 Recommended
+                            </div>
+                            <div style="font-weight:800;font-size:16px;margin-bottom:2px;color:${nameColor};line-height:1.2;">${esc(rec.name)}</div>
+                            <div style="font-size:12px;color:${isMe ? 'rgba(255,255,255,0.8)' : '#666'};margin-bottom:14px;font-weight:500;">Restaurant</div>
+                            <div style="display:flex;gap:8px;">
+                                <a href="/restaurant/${rec.id}/" style="flex:1;text-align:center;background:${btn1Bg};color:${btn1Text};text-decoration:none;padding:8px 12px;border-radius:8px;font-size:12px;font-weight:700;display:block;white-space:nowrap;transition:background 0.2s;">View</a>
+                                <div style="flex:1;text-align:center;background:${btn2Bg};color:${btn2Text};padding:8px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:background 0.2s;border:1px solid ${isMe ? 'rgba(255,255,255,0.3)' : 'rgba(212,43,43,0.2)'};" onclick="toggleShared(${rec.id}, '${btn2Action}')">${btn2Label}</div>
+                            </div>
+                        </div>
+                    `;
+                }
+                return `<div class="msg-wrap ${isMe?'me':'them'}">
+                    ${!isMe ? `<div class="msg-sender">${esc(m.sender_username)}</div>` : ''}
+                    <div class="msg-bubble ${isMe?'me':'them'}">${body}
+                        <div class="msg-time">${formatTime(m.created_at)}</div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+        if (atBottom || (d.messages||[]).length <= 10) container.scrollTop = container.scrollHeight;
+        
+        // Update Together List
+        renderTogetherList(d.shared_restaurants);
+        
+        // Handle Group Members
+        const convInfo = d.conversation;
+        if (convInfo) {
+            activeConvCreatorId = convInfo.creator_id;
+            activeConvParticipants = convInfo.participants || [];
+            const meObj = activeConvParticipants.find(p => p.username === ME);
+            if (meObj) myUserId = meObj.id;
+            
+            if (activeConvIsGroup) {
+                document.getElementById('members-card').style.display = 'block';
+                renderMembersList();
+            } else {
+                document.getElementById('members-card').style.display = 'none';
+            }
+        }
+        
+    } catch(e) { console.error(e); }
+}
+
+async function sendMessage() {
+    const input = document.getElementById('chat-input');
+    const body = input.value.trim();
+    if (!body || !activeConvId) return;
+    const btn = document.getElementById('send-btn');
+    btn.disabled = true; input.value = '';
+    try {
+        const r = await api(`/api/friends-chat/${activeConvId}/`, { method:'POST', body: JSON.stringify({body:body}) });
+        if (r.ok) { await fetchMessages(activeConvId); await loadConvs(); }
+        else { input.value = body; }
+    } catch(_) { input.value = body; }
+    finally { btn.disabled = false; input.focus(); }
+}
+
+/* Recommend Restaurant */
+let pickedRecRestId = null;
+function filterRecRestaurants() {
+    const q = document.getElementById('rec-rest-input').value.toLowerCase().trim();
+    const list = document.getElementById('rec-rest-list');
+    if (!q) { list.style.display = 'none'; pickedRecRestId = null; updateRecBtn(); return; }
+    const hits = allRestaurants.filter(r => r.name.toLowerCase().includes(q) || (r.neighborhood||'').toLowerCase().includes(q));
+    if (!hits.length) {
+        list.innerHTML = '<div style="padding:8px;font-size:12px;color:#aaa;">No matches</div>';
+        list.style.display = 'block';
+        return;
+    }
+    list.innerHTML = hits.slice(0, 10).map(r => `
+        <div style="padding:8px;font-size:12px;cursor:pointer;border-bottom:1px solid #eee;" onclick="pickRecRest(${r.id}, '${esc(r.name).replace(/'/g, "\\'")}')">
+            <strong>${esc(r.name)}</strong> <span style="color:#888;">${r.neighborhood ? esc(r.neighborhood) : ''}</span>
+        </div>
+    `).join('');
+    list.style.display = 'block';
+}
+
+function pickRecRest(id, name) {
+    pickedRecRestId = id;
+    document.getElementById('rec-rest-input').value = name;
+    document.getElementById('rec-rest-list').style.display = 'none';
+    updateRecBtn();
+}
+
+function updateRecBtn() {
+    document.getElementById('rec-send-btn').disabled = !pickedRecRestId;
+}
+
+async function sendRecommendation() {
+    if (!pickedRecRestId || !activeConvId) return;
+    const msg = document.getElementById('rec-msg-input').value.trim();
+    const btn = document.getElementById('rec-send-btn');
+    btn.disabled = true;
+    try {
+        const r = await api(`/api/friends-chat/${activeConvId}/recommend/`, {
+            method: 'POST', body: JSON.stringify({ restaurant_id: pickedRecRestId, body: msg })
+        });
+        if (r.ok) {
+            document.getElementById('rec-rest-input').value = '';
+            document.getElementById('rec-msg-input').value = '';
+            pickedRecRestId = null;
+            updateRecBtn();
+            await fetchMessages(activeConvId);
+            await loadConvs();
+        } else {
+            const err = document.getElementById('rec-err');
+            err.textContent = 'Failed to recommend.'; err.style.display = 'block';
+        }
+    } catch(e) {}
+    finally { btn.disabled = false; }
+}
+
+/* Together List */
+function renderTogetherList(shared) {
+    const container = document.getElementById('together-list-items');
+    if (!container) return;
+    if (!shared || shared.length === 0) {
+        container.innerHTML = '<p class="right-placeholder" style="margin:0;">No restaurants shared yet.</p>';
+        return;
+    }
+    container.innerHTML = shared.map(sr => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(212,43,43,0.1);">
+            <div style="font-size:13px;">
+                <a href="/restaurant/${sr.restaurant_id}/" style="color:#333;text-decoration:none;font-weight:600;">${esc(sr.restaurant_name)}</a>
+                <div style="font-size:10px;color:#aaa;">Added by ${esc(sr.added_by)}</div>
+            </div>
+            <button onclick="toggleShared(${sr.restaurant_id}, 'remove')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px;">×</button>
+        </div>
+    `).join('');
+}
+
+function filterTlRestaurants() {
+    const q = document.getElementById('tl-rest-input').value.toLowerCase().trim();
+    const list = document.getElementById('tl-rest-list');
+    if (!q) { list.style.display = 'none'; return; }
+    const hits = allRestaurants.filter(r => r.name.toLowerCase().includes(q) || (r.neighborhood||'').toLowerCase().includes(q));
+    if (!hits.length) {
+        list.innerHTML = '<div style="padding:8px;font-size:12px;color:#aaa;">No matches</div>';
+        list.style.display = 'block';
+        return;
+    }
+    list.innerHTML = hits.slice(0, 10).map(r => `
+        <div style="padding:8px;font-size:12px;cursor:pointer;border-bottom:1px solid #eee;" onclick="toggleShared(${r.id}, 'add')">
+            <strong>${esc(r.name)}</strong> <span style="color:#888;">${r.neighborhood ? esc(r.neighborhood) : ''}</span>
+        </div>
+    `).join('');
+    list.style.display = 'block';
+}
+
+async function toggleShared(restaurant_id, action) {
+    if (!activeConvId) return;
+    document.getElementById('tl-rest-input').value = '';
+    document.getElementById('tl-rest-list').style.display = 'none';
+    try {
+        const r = await api(`/api/friends-chat/${activeConvId}/toggle-shared/`, {
+            method: 'POST', body: JSON.stringify({ restaurant_id, action })
+        });
+        if (r.ok) {
+            await fetchMessages(activeConvId);
+        }
+    } catch(e) {}
+}
+
+/* Group Management */
+function renderMembersList() {
+    const container = document.getElementById('members-list-items');
+    const amArea = document.getElementById('add-member-area');
+    if (!container) return;
+    
+    const isAdmin = myUserId === activeConvCreatorId;
+    amArea.style.display = isAdmin ? 'block' : 'none';
+    
+    container.innerHTML = activeConvParticipants.map(p => {
+        const isCreator = p.id === activeConvCreatorId;
+        const isMe = p.id === myUserId;
+        
+        let removeBtn = '';
+        if (isAdmin && !isCreator && !isMe) {
+            removeBtn = `<button onclick="manageMember('remove', ${p.id})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px;" title="Remove member">×</button>`;
+        }
+        
+        return `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(212,43,43,0.05);">
+                <div style="font-size:13px;display:flex;align-items:center;gap:6px;">
+                    <span style="font-weight:600;">${esc(p.username)}</span>
+                    ${isCreator ? '<span style="font-size:10px;background:var(--red);color:white;padding:2px 6px;border-radius:8px;">Admin</span>' : ''}
+                </div>
+                ${removeBtn}
+            </div>
+        `;
+    }).join('');
+}
+
+function filterAddMember() {
+    const q = document.getElementById('add-member-input').value.toLowerCase().trim();
+    const list = document.getElementById('add-member-list');
+    if (!q) { list.style.display = 'none'; return; }
+    
+    const hits = allOtherUsers.filter(u => u.username.toLowerCase().includes(q) && !activeConvParticipants.find(p => p.id === u.id));
+    if (!hits.length) {
+        list.innerHTML = '<div style="padding:8px;font-size:12px;color:#aaa;">No available friends to add</div>';
+        list.style.display = 'block';
+        return;
+    }
+    list.innerHTML = hits.map(u => `
+        <div style="padding:8px;font-size:13px;cursor:pointer;border-bottom:1px solid #eee;" onclick="manageMember('add', ${u.id})">
+            ${esc(u.username)}
+        </div>
+    `).join('');
+    list.style.display = 'block';
+}
+
+async function manageMember(action, userId) {
+    document.getElementById('add-member-input').value = '';
+    document.getElementById('add-member-list').style.display = 'none';
+    try {
+        const r = await api(`/api/friends-chat/group/${activeConvId}/manage/`, {
+            method: 'POST', body: JSON.stringify({ action: action, user_id: userId })
+        });
+        if (r.ok) {
+            await fetchMessages(activeConvId);
+        } else {
+            const d = await r.json();
+            alert(d.error || 'Failed to manage member.');
+        }
+    } catch(e) {}
+}
+
+function leaveGroup() {
+    document.getElementById('leave-group-modal').classList.add('open');
+    document.getElementById('lg-err').textContent = '';
+    
+    if (activeConvCreatorId === myUserId) {
+        const others = activeConvParticipants.filter(p => p.id !== myUserId);
+        if (others.length === 0) {
+            document.getElementById('lg-desc').textContent = "You are the only member left. The group will be deleted. Are you sure?";
+            document.getElementById('lg-admin-area').style.display = 'none';
+        } else {
+            document.getElementById('lg-desc').textContent = "You are the admin. You must assign a new admin before leaving.";
+            document.getElementById('lg-admin-area').style.display = 'block';
+            
+            const select = document.getElementById('lg-new-admin');
+            select.innerHTML = '<option value="">Select new admin...</option>' + others.map(o => `<option value="${o.id}">${esc(o.username)}</option>`).join('');
+        }
+    } else {
+        document.getElementById('lg-desc').textContent = "Are you sure you want to leave this group?";
+        document.getElementById('lg-admin-area').style.display = 'none';
+    }
+}
+
+async function confirmLeaveGroup() {
+    let payload = {};
+    if (activeConvCreatorId === myUserId) {
+        const others = activeConvParticipants.filter(p => p.id !== myUserId);
+        if (others.length > 0) {
+            const newAdminId = document.getElementById('lg-new-admin').value;
+            if (!newAdminId) {
+                document.getElementById('lg-err').textContent = "Please select a new admin.";
+                return;
+            }
+            payload = { new_admin_id: parseInt(newAdminId) };
+        }
+    }
+    
+    try {
+        const r = await api(`/api/friends-chat/group/${activeConvId}/leave/`, {
+            method: 'POST', body: JSON.stringify(payload)
+        });
+        if (r.ok) {
+            window.location.href = '/friends-chat/';
+        } else {
+            const d = await r.json();
+            document.getElementById('lg-err').textContent = d.error || 'Failed to leave group.';
+        }
+    } catch(e) {
+        document.getElementById('lg-err').textContent = 'Network error.';
+    }
+}
+
+/* Modal & User Lists */
+let selectedNcUsername = null;
+let selectedGcUsers = [];
+
+function populateUserDropdowns() {
+    // Dropdowns are now dynamic via search
+}
+
+function filterNcUsers() {
+    const q = document.getElementById('nc-user-search').value.toLowerCase().trim();
+    const list = document.getElementById('nc-user-list');
+    if (!q) { list.style.display = 'none'; selectedNcUsername = null; document.getElementById('nc-ok-btn').disabled = true; return; }
+    
+    const hits = allOtherUsers.filter(u => u.username.toLowerCase().includes(q));
+    if (!hits.length) {
+        list.innerHTML = '<div style="padding:8px;font-size:12px;color:#aaa;">No matching diners</div>';
+        list.style.display = 'block';
+        return;
+    }
+    list.innerHTML = hits.map(u => `
+        <div style="padding:8px;font-size:13px;cursor:pointer;border-bottom:1px solid #eee;" onclick="pickNcUser('${esc(u.username).replace(/'/g, "\\'")}')">
+            ${esc(u.username)}
+        </div>
+    `).join('');
+    list.style.display = 'block';
+}
+
+function pickNcUser(username) {
+    selectedNcUsername = username;
+    document.getElementById('nc-user-search').value = username;
+    document.getElementById('nc-user-list').style.display = 'none';
+    document.getElementById('nc-ok-btn').disabled = false;
+}
+
+function filterGcUsers() {
+    const q = document.getElementById('gc-user-search').value.toLowerCase().trim();
+    const list = document.getElementById('gc-user-list');
+    if (!q) { list.style.display = 'none'; return; }
+    
+    // exclude already selected
+    const hits = allOtherUsers.filter(u => u.username.toLowerCase().includes(q) && !selectedGcUsers.find(su => su.id === u.id));
+    if (!hits.length) {
+        list.innerHTML = '<div style="padding:8px;font-size:12px;color:#aaa;">No matching diners</div>';
+        list.style.display = 'block';
+        return;
+    }
+    list.innerHTML = hits.map(u => `
+        <div style="padding:8px;font-size:13px;cursor:pointer;border-bottom:1px solid #eee;" onclick="pickGcUser(${u.id}, '${esc(u.username).replace(/'/g, "\\'")}')">
+            ${esc(u.username)}
+        </div>
+    `).join('');
+    list.style.display = 'block';
+}
+
+function pickGcUser(id, username) {
+    selectedGcUsers.push({id, username});
+    document.getElementById('gc-user-search').value = '';
+    document.getElementById('gc-user-list').style.display = 'none';
+    renderGcSelected();
+}
+
+function removeGcUser(id) {
+    selectedGcUsers = selectedGcUsers.filter(u => u.id !== id);
+    renderGcSelected();
+}
+
+function renderGcSelected() {
+    const container = document.getElementById('gc-selected-users');
+    container.innerHTML = selectedGcUsers.map(u => `
+        <div style="display:flex;align-items:center;gap:4px;background:rgba(212,43,43,0.1);padding:4px 8px;border-radius:12px;font-size:12px;color:var(--red);font-weight:600;">
+            ${esc(u.username)}
+            <span style="cursor:pointer;margin-left:4px;" onclick="removeGcUser(${u.id})">×</span>
+        </div>
+    `).join('');
+}
+
 function openNewChatModal() {
     document.getElementById('new-chat-modal').classList.add('open');
-    document.getElementById('nc-username').value = '';
+    document.getElementById('nc-user-search').value = '';
+    selectedNcUsername = null;
+    document.getElementById('nc-ok-btn').disabled = true;
     document.getElementById('nc-err').textContent = '';
-    setTimeout(() => document.getElementById('nc-username').focus(), 100);
+    document.getElementById('nc-user-list').style.display = 'none';
 }
-function closeModal() { document.getElementById('new-chat-modal').classList.remove('open'); }
+
+function openGroupChatModal() {
+    document.getElementById('group-chat-modal').classList.add('open');
+    document.getElementById('gc-name').value = '';
+    document.getElementById('gc-user-search').value = '';
+    document.getElementById('gc-user-list').style.display = 'none';
+    selectedGcUsers = [];
+    renderGcSelected();
+    document.getElementById('gc-err').textContent = '';
+}
+
+function closeModal() {
+    document.getElementById('new-chat-modal').classList.remove('open');
+    document.getElementById('group-chat-modal').classList.remove('open');
+    document.getElementById('leave-group-modal').classList.remove('open');
+}
+
 document.getElementById('new-chat-modal').addEventListener('click', function(e) { if(e.target===this) closeModal(); });
+document.getElementById('group-chat-modal').addEventListener('click', function(e) { if(e.target===this) closeModal(); });
+document.getElementById('leave-group-modal').addEventListener('click', function(e) { if(e.target===this) closeModal(); });
 
 async function startNewChat() {
-    const username = document.getElementById('nc-username').value.trim();
-    if (!username) { document.getElementById('nc-err').textContent = 'Enter a username.'; return; }
+    const username = selectedNcUsername;
+    if (!username) { document.getElementById('nc-err').textContent = 'Please select a friend.'; return; }
+    document.getElementById('nc-ok-btn').disabled = true;
     try {
         const r = await api('/api/friends-chat/', { method: 'POST', body: JSON.stringify({ username }) });
         const d = await r.json();
@@ -328,6 +972,26 @@ async function startNewChat() {
             else { await loadConvs(); }
         } else { document.getElementById('nc-err').textContent = d.error || 'Could not start chat.'; }
     } catch(_) { document.getElementById('nc-err').textContent = 'Network error.'; }
+}
+
+async function createGroupChat() {
+    const name = document.getElementById('gc-name').value.trim();
+    if (!name) { document.getElementById('gc-err').textContent = 'Enter a group name.'; return; }
+    
+    const participantIds = selectedGcUsers.map(u => u.id);
+    if (participantIds.length === 0) { document.getElementById('gc-err').textContent = 'Select at least one participant.'; return; }
+    
+    try {
+        const r = await api('/api/friends-chat/group/create/', { method: 'POST', body: JSON.stringify({ name: name, participant_ids: participantIds }) });
+        const d = await r.json();
+        if (r.ok) {
+            closeModal();
+            await loadConvs();
+            if (d.conversation) {
+                window.location.href = `/friends-chat/group/${d.conversation.id}/`;
+            }
+        } else { document.getElementById('gc-err').textContent = d.error || 'Could not create group.'; }
+    } catch(_) { document.getElementById('gc-err').textContent = 'Network error.'; }
 }
 
 async function handleLogout() {

@@ -2129,11 +2129,20 @@ def _serialize_conversation(conv, request_user):
     participants = list(conv.get_participants().values_list("id", "username"))
     last_msg = conv.messages.order_by("-created_at").first()
     unread = conv.messages.filter(is_read=False).exclude(sender=request_user).count()
+    
+    other_username = None
+    if not conv.is_group:
+        for p in participants:
+            if p[0] != request_user.id:
+                other_username = p[1]
+                break
+
     return {
         "id": conv.id,
         "name": conv.name,
         "is_group": conv.is_group,
         "creator_id": conv.creator_id,
+        "other_username": other_username,
         "participants": [{"id": p[0], "username": p[1]} for p in participants],
         "unread_count": unread,
         "last_message": (

@@ -3,11 +3,19 @@
 {% include 'nomz/components/premium_design.html' %}
 <style>
     /* ── Reset outer layout ── */
-    nav.navbar { display: none !important; }
-    body > footer { display: none !important; }
+    nav.navbar {
+        display: none !important;
+    }
+
+    body>footer {
+        display: none !important;
+    }
 
     /* ── Typography ── */
-    * { font-family: var(--font-sans); box-sizing: border-box; }
+    * {
+        font-family: var(--font-sans);
+        box-sizing: border-box;
+    }
 
     /* ── Shell ── */
     .ad-shell {
@@ -28,18 +36,21 @@
         background: rgba(255, 255, 255, 0.6);
         backdrop-filter: blur(12px);
     }
+
     .ad-topbar-brand {
         font-size: 18px;
         font-weight: 700;
-        color: #e05a6a;
+        color: var(--red);
         letter-spacing: -0.3px;
         text-decoration: none;
     }
+
     .ad-topbar-actions {
         display: flex;
         gap: 14px;
         align-items: center;
     }
+
     .ad-topbar-icon-btn {
         background: none;
         border: none;
@@ -51,7 +62,10 @@
         transition: color 0.2s;
         text-decoration: none;
     }
-    .ad-topbar-icon-btn:hover { color: #e05a6a; }
+
+    .ad-topbar-icon-btn:hover {
+        color: var(--red);
+    }
 
     /* ── Main content ── */
     .ad-content {
@@ -64,9 +78,10 @@
     .ad-page-title {
         font-size: 32px;
         font-weight: 700;
-        color: #e05a6a;
+        color: var(--red);
         margin: 0;
     }
+
     .ad-page-subtitle {
         font-size: 14px;
         color: #8a7e75;
@@ -80,9 +95,13 @@
         gap: 16px;
         margin-bottom: 20px;
     }
+
     @media (max-width: 680px) {
-        .ad-stats-grid { grid-template-columns: 1fr; }
+        .ad-stats-grid {
+            grid-template-columns: 1fr;
+        }
     }
+
     .ad-stat-card {
         background: rgba(255, 255, 255, 0.7);
         backdrop-filter: blur(20px);
@@ -94,13 +113,19 @@
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         box-shadow: 0 4px 12px rgba(212, 43, 43, 0.04);
     }
-    .ad-stat-card:hover { 
+
+    .ad-stat-card:hover {
         transform: translateY(-4px);
         box-shadow: 0 12px 24px rgba(212, 43, 43, 0.12);
         border-color: rgba(212, 43, 43, 0.3);
     }
- 
-    .ad-stat-icon { color: var(--red); margin-bottom: 12px; display: block; }
+
+    .ad-stat-icon {
+        color: var(--red);
+        margin-bottom: 12px;
+        display: block;
+    }
+
     .ad-stat-badge {
         position: absolute;
         top: 18px;
@@ -112,6 +137,7 @@
         letter-spacing: 0.3px;
         text-transform: uppercase;
     }
+
     .ad-stat-badge-label {
         position: absolute;
         top: 18px;
@@ -120,7 +146,13 @@
         color: #a09590;
         font-weight: 500;
     }
-    .ad-stat-badge-urgent { background: #fde8ec; color: #c0394a; box-shadow: 0 2px 8px rgba(192, 57, 74, 0.2); }
+
+    .ad-stat-badge-urgent {
+        background: #fde8ec;
+        color: #c0394a;
+        box-shadow: 0 2px 8px rgba(192, 57, 74, 0.2);
+    }
+
     .ad-stat-value {
         font-size: 32px;
         font-weight: 800;
@@ -129,13 +161,14 @@
         margin: 0 0 6px 0;
         font-family: var(--font-sans);
     }
+
     .ad-stat-label {
         font-size: 13px;
         color: #7b6b6b;
         font-weight: 500;
         margin: 0;
     }
- 
+
     /* ── Action cards grid ── */
     .ad-actions-grid {
         display: grid;
@@ -143,10 +176,13 @@
         gap: 16px;
         margin-bottom: 24px;
     }
+
     @media (max-width: 580px) {
-        .ad-actions-grid { grid-template-columns: 1fr; }
+        .ad-actions-grid {
+            grid-template-columns: 1fr;
+        }
     }
- 
+
     .ad-action-card {
         background: rgba(255, 255, 255, 0.6);
         backdrop-filter: blur(16px);
@@ -163,6 +199,7 @@
         position: relative;
         overflow: hidden;
     }
+
     .ad-action-card:hover {
         background: rgba(255, 255, 255, 0.8);
         box-shadow: 0 10px 30px rgba(212, 43, 43, 0.1);
@@ -170,13 +207,23 @@
         transform: translateY(-2px);
         text-decoration: none;
     }
+
     .ad-action-card.danger {
         background: rgba(255, 246, 247, 0.5);
         border-color: rgba(245, 204, 208, 0.6);
     }
-    .ad-action-card.danger:hover { border-color: #e05a6a; }
- 
-    .ad-action-header { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+
+    .ad-action-card.danger:hover {
+        border-color: var(--red);
+    }
+
+    .ad-action-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 4px;
+    }
+
     .ad-action-title {
         font-size: 17px;
         font-weight: 700;
@@ -184,18 +231,20 @@
         margin: 0;
         font-family: var(--font-sans);
     }
+
     .ad-action-desc {
         font-size: 13.5px;
         color: #7b6b6b;
         margin: 0;
         line-height: 1.5;
     }
+
     .ad-action-hover-btn {
         display: none;
         position: absolute;
         bottom: 16px;
         right: 16px;
-        background: #e05a6a;
+        background: var(--red);
         color: white;
         font-size: 11px;
         font-weight: 700;
@@ -204,8 +253,20 @@
         white-space: nowrap;
         animation: fadeIn 0.2s ease;
     }
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-    .ad-action-card:hover .ad-action-hover-btn { display: block; }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
+    }
+
+    .ad-action-card:hover .ad-action-hover-btn {
+        display: block;
+    }
 
     /* ── Recalculate & Section section ── */
     .ad-section-card {
@@ -218,13 +279,26 @@
         margin-bottom: 24px;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
+
     .ad-section-card:hover {
         background: rgba(255, 255, 255, 0.8);
         box-shadow: 0 10px 30px rgba(212, 43, 43, 0.1);
         border-color: rgba(212, 43, 43, 0.25);
     }
-    .ad-section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-    .ad-section-title-wrap { display: flex; align-items: center; gap: 12px; }
+
+    .ad-section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+    }
+
+    .ad-section-title-wrap {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
     .ad-section-title {
         font-size: 17px;
         font-weight: 700;
@@ -232,23 +306,32 @@
         margin: 0;
         font-family: var(--font-sans);
     }
+
     .ad-section-desc {
         font-size: 13px;
         color: #8a7e75;
         margin: 0 0 18px 0;
     }
+
     .ad-form-row {
         display: flex;
         align-items: flex-end;
         gap: 12px;
         flex-wrap: wrap;
     }
-    .ad-form-group { display: flex; flex-direction: column; gap: 5px; }
+
+    .ad-form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+
     .ad-form-label {
         font-size: 12px;
         color: #8a7e75;
         font-weight: 500;
     }
+
     .ad-form-input {
         border: 1px solid #ddd5cc;
         border-radius: 8px;
@@ -260,9 +343,14 @@
         transition: border-color 0.2s;
         width: 160px;
     }
-    .ad-form-input:focus { border-color: #e05a6a; background: #fff; }
+
+    .ad-form-input:focus {
+        border-color: var(--red);
+        background: #fff;
+    }
+
     .ad-btn-primary {
-        background: #e05a6a;
+        background: var(--red);
         color: white;
         border: none;
         border-radius: 8px;
@@ -276,12 +364,18 @@
         transition: all 0.2s;
         box-shadow: 0 4px 12px rgba(212, 43, 43, 0.2);
     }
+
     .ad-btn-primary:hover {
         background: #b82020;
         transform: translateY(-1px);
         box-shadow: 0 6px 16px rgba(212, 43, 43, 0.3);
     }
-    .ad-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    .ad-btn-primary:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
 
     /* ── Score anomalies section ── */
     .ad-anomaly-header {
@@ -289,6 +383,7 @@
         align-items: center;
         justify-content: space-between;
     }
+
     .ad-btn-outline {
         background: transparent;
         border: 1.5px solid var(--red);
@@ -300,17 +395,23 @@
         cursor: pointer;
         transition: all 0.2s;
     }
+
     .ad-btn-outline:hover {
         background: rgba(212, 43, 43, 0.05);
     }
 
     /* Anomaly table */
-    .ad-table-wrap { overflow-x: auto; margin-top: 18px; }
+    .ad-table-wrap {
+        overflow-x: auto;
+        margin-top: 18px;
+    }
+
     .ad-table {
         width: 100%;
         border-collapse: collapse;
         font-size: 13px;
     }
+
     .ad-table th {
         text-align: left;
         font-weight: 600;
@@ -319,13 +420,18 @@
         border-bottom: 1px solid #ede9e3;
         background: #faf8f5;
     }
+
     .ad-table td {
         padding: 12px 14px;
         color: #3e3530;
         border-bottom: 1px solid #f2ede8;
         vertical-align: middle;
     }
-    .ad-table tr:last-child td { border-bottom: none; }
+
+    .ad-table tr:last-child td {
+        border-bottom: none;
+    }
+
     .ad-severity-badge {
         display: inline-block;
         padding: 2px 10px;
@@ -333,9 +439,23 @@
         font-size: 11px;
         font-weight: 600;
     }
-    .ad-sev-high, .ad-sev-critical { background: #fde8ec; color: #c0394a; }
-    .ad-sev-medium { background: #fef3e2; color: #b07300; }
-    .ad-sev-low { background: #e8f4ec; color: #2c7a3a; }
+
+    .ad-sev-high,
+    .ad-sev-critical {
+        background: #fde8ec;
+        color: #c0394a;
+    }
+
+    .ad-sev-medium {
+        background: #fef3e2;
+        color: #b07300;
+    }
+
+    .ad-sev-low {
+        background: #e8f4ec;
+        color: #2c7a3a;
+    }
+
     .ad-resolve-btn {
         background: none;
         border: 1px solid #ddd5cc;
@@ -346,8 +466,17 @@
         cursor: pointer;
         transition: border-color 0.2s, color 0.2s;
     }
-    .ad-resolve-btn:hover { border-color: #e05a6a; color: #e05a6a; }
-    .ad-empty-text { font-size: 13px; color: #a09590; margin: 14px 0 0; }
+
+    .ad-resolve-btn:hover {
+        border-color: var(--red);
+        color: var(--red);
+    }
+
+    .ad-empty-text {
+        font-size: 13px;
+        color: #a09590;
+        margin: 14px 0 0;
+    }
 
     /* ── Toast notification ── */
     #ad-toast {
@@ -366,6 +495,7 @@
         z-index: 9999;
         pointer-events: none;
     }
+
     #ad-toast.show {
         opacity: 1;
         transform: translateX(-50%) translateY(0);
@@ -383,7 +513,7 @@
 </style>
 
 <div class="ad-shell">
-{% include 'nomz/components/premium_nav.html' %}
+    {% include 'nomz/components/premium_nav.html' %}
 
     <div class="ad-content">
         <!-- Page heading -->
@@ -391,11 +521,18 @@
             <h1 class="ad-page-title">Admin Dashboard</h1>
             <span style="font-size: 11px; color: #999;" id="last-sync">Syncing...</span>
         </div>
-        <p class="ad-page-subtitle">Welcome back, {{ user.username }}. Here's what's happening across the platform today.</p>
+        <p class="ad-page-subtitle">Welcome back, {{ user.username }}. Here's what's happening across the platform
+            today.</p>
         <div class="ad-stats-grid">
             <div class="ad-stat-card">
                 <div class="ad-stat-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
                 </div>
                 <span class="ad-stat-badge-label">Total</span>
                 <p class="ad-stat-value" id="ad-active-users">—</p>
@@ -403,7 +540,12 @@
             </div>
             <div class="ad-stat-card">
                 <div class="ad-stat-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                        <line x1="8" y1="21" x2="16" y2="21"></line>
+                        <line x1="12" y1="17" x2="12" y2="21"></line>
+                    </svg>
                 </div>
                 <span class="ad-stat-badge-label">Listed</span>
                 <p class="ad-stat-value" id="ad-restaurants">—</p>
@@ -411,79 +553,122 @@
             </div>
             <div class="ad-stat-card">
                 <div class="ad-stat-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
                 </div>
                 <span id="ad-pending-badge" class="ad-stat-badge" style="display:none;"></span>
                 <p class="ad-stat-value" id="ad-pending-approvals">—</p>
                 <p class="ad-stat-label">Pending Approvals</p>
             </div>
         </div>
- 
+
         <!-- Stats row 2 -->
         <div class="ad-stats-grid">
             <div class="ad-stat-card">
                 <div class="ad-stat-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
+                        <line x1="4" y1="22" x2="4" y2="15"></line>
+                    </svg>
                 </div>
                 <p class="ad-stat-value" id="ad-content-reports">—</p>
                 <p class="ad-stat-label">Content Reports</p>
             </div>
             <a href="/nomz-admin/logs/?filter=suspicious" class="ad-stat-card" style="text-decoration: none;">
                 <div class="ad-stat-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path
+                            d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z">
+                        </path>
+                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
                 </div>
                 <p class="ad-stat-value" id="ad-suspicious">—</p>
                 <p class="ad-stat-label">Suspicious Accounts</p>
             </a>
             <div class="ad-stat-card">
                 <div class="ad-stat-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="15" y1="9" x2="9" y2="15"></line>
+                        <line x1="9" y1="9" x2="15" y2="15"></line>
+                    </svg>
                 </div>
                 <p class="ad-stat-value" id="ad-flagged">—</p>
                 <p class="ad-stat-label">Flagged Content</p>
             </div>
         </div>
- 
+
         <!-- Action cards -->
         <div class="ad-actions-grid">
             <a href="{% url 'admin_moderation_dashboard' %}" class="ad-action-card">
                 <div class="ad-action-header">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="var(--red)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
                     <p class="ad-action-title">Content Moderation</p>
                 </div>
                 <p class="ad-action-desc"><span id="count-moderation">—</span> report(s) awaiting review</p>
             </a>
             <a href="{% url 'admin_pending_approvals' %}" class="ad-action-card">
                 <div class="ad-action-header">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="var(--red)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    </svg>
                     <p class="ad-action-title">Business Approvals</p>
                 </div>
                 <p class="ad-action-desc"><span id="count-approvals">—</span> pending restaurant registrations</p>
             </a>
             <a href="{% url 'admin_manage_users' %}" class="ad-action-card">
                 <div class="ad-action-header">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="var(--red)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
                     <p class="ad-action-title">Manage Users</p>
                 </div>
                 <p class="ad-action-desc"><span id="count-users">—</span> total registered user accounts</p>
             </a>
             <a href="{% url 'admin_login_logs' %}" class="ad-action-card">
                 <div class="ad-action-header">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="var(--red)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                        <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                    </svg>
                     <p class="ad-action-title">Admin Logs</p>
                 </div>
                 <p class="ad-action-desc"><span id="count-logs">—</span> system activity and security entries</p>
             </a>
             <a href="{% url 'admin_approved_accounts' %}" class="ad-action-card">
                 <div class="ad-action-header">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="var(--red)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
                     <p class="ad-action-title">Approved businesses</p>
                 </div>
                 <p class="ad-action-desc"><span id="count-approved">—</span> accounts already authorized</p>
             </a>
             <a href="{% url 'admin_rejected_accounts' %}" class="ad-action-card danger">
                 <div class="ad-action-header">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="var(--red)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
                     <p class="ad-action-title">Rejected businesses</p>
                 </div>
                 <p class="ad-action-desc"><span id="count-rejected">—</span> denied or revoked accounts</p>
@@ -495,19 +680,27 @@
         <div class="ad-section-card">
             <div class="ad-section-header">
                 <div class="ad-section-title-wrap">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="var(--red)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="20" x2="18" y2="10"></line>
+                        <line x1="12" y1="20" x2="12" y2="4"></line>
+                        <line x1="6" y1="20" x2="6" y2="14"></line>
+                    </svg>
                     <p class="ad-section-title">Recalculate Composite Scores</p>
                 </div>
             </div>
-            <p class="ad-section-desc">Recalculate scores for a specific restaurant or leave both fields empty to recalculate all.</p>
+            <p class="ad-section-desc">Recalculate scores for a specific restaurant or leave both fields empty to
+                recalculate all.</p>
             <div class="ad-form-row">
                 <div class="ad-form-group">
                     <label class="ad-form-label" for="ad-rest-id">Restaurant ID</label>
-                    <input id="ad-rest-id" class="ad-form-input" type="number" placeholder="e.g. 42" style="width:130px;">
+                    <input id="ad-rest-id" class="ad-form-input" type="number" placeholder="e.g. 42"
+                        style="width:130px;">
                 </div>
                 <div class="ad-form-group">
                     <label class="ad-form-label" for="ad-rest-name">or Restaurant Name</label>
-                    <input id="ad-rest-name" class="ad-form-input" type="text" placeholder="e.g. Sushi Palace" style="width:200px;">
+                    <input id="ad-rest-name" class="ad-form-input" type="text" placeholder="e.g. Sushi Palace"
+                        style="width:200px;">
                 </div>
                 <button id="ad-recalc-btn" class="ad-btn-primary" onclick="recalcScores()">Recalculate</button>
             </div>
@@ -518,10 +711,14 @@
         <div class="ad-section-card" id="ad-anomaly-section">
             <div class="ad-section-header">
                 <div class="ad-section-title-wrap">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polyline></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="var(--red)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polyline>
+                    </svg>
                     <p class="ad-section-title">Score Anomalies</p>
                 </div>
-                <button class="ad-btn-outline" id="ad-show-anomalies-btn" onclick="toggleAnomalies()">Show Anomalies</button>
+                <button class="ad-btn-outline" id="ad-show-anomalies-btn" onclick="toggleAnomalies()">Show
+                    Anomalies</button>
             </div>
             <div id="ad-anomaly-content" style="display:none;">
                 <div class="ad-table-wrap">
@@ -537,7 +734,9 @@
                             </tr>
                         </thead>
                         <tbody id="ad-anomaly-tbody">
-                            <tr><td colspan="6" class="ad-empty-text" style="padding:16px 14px;">Loading…</td></tr>
+                            <tr>
+                                <td colspan="6" class="ad-empty-text" style="padding:16px 14px;">Loading…</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -546,8 +745,10 @@
     </div>
 
     <!-- Footer -->
-    <footer style="border-top:2px solid var(--ink);padding:20px 6vw;display:flex;justify-content:space-between;align-items:center;background:var(--paper);">
-        <span style="font-family:var(--font-serif);font-style:italic;font-size:13px;color:var(--tan);">Good food, always.</span>
+    <footer
+        style="border-top:2px solid var(--ink);padding:20px 6vw;display:flex;justify-content:space-between;align-items:center;background:var(--paper);">
+        <span style="font-family:var(--font-serif);font-style:italic;font-size:13px;color:var(--tan);">Good food,
+            always.</span>
         <span style="font-size:10px;letter-spacing:0.3em;text-transform:uppercase;color:var(--mid);">nomz</span>
     </footer>
 </div>
@@ -556,134 +757,134 @@
 <div id="ad-toast"></div>
 
 <script>
-function showToast(msg, isError) {
-    const t = document.getElementById('ad-toast');
-    t.textContent = msg;
-    t.style.background = isError ? '#c0394a' : '#2e2820';
-    t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 3500);
-}
-
-/* ── Load summary stats ── */
-async function loadStats() {
-    try {
-        const r = await apiFetch('/api/admin/dashboard-summary/');
-        if (!r.ok) return;
-        const d = await r.json();
-        document.getElementById('last-sync').textContent = `Last sync: ${new Date().toLocaleTimeString()}`;
-
-        document.getElementById('ad-active-users').textContent = d.total_users ?? 0;
-        document.getElementById('ad-restaurants').textContent = d.total_restaurants ?? 0;
-        document.getElementById('ad-content-reports').textContent = d.pending_reports ?? 0;
-        document.getElementById('ad-suspicious').textContent = d.suspicious_accounts ?? 0;
-        document.getElementById('ad-flagged').textContent = d.flagged_content ?? 0;
-
-        // Action Card Counts
-        document.getElementById('count-moderation').textContent = d.pending_reports ?? 0;
-        document.getElementById('count-approvals').textContent = d.pending_approvals ?? 0;
-        document.getElementById('count-users').textContent = d.total_users ?? 0;
-        document.getElementById('count-logs').textContent = d.total_logs ?? 0;
-        document.getElementById('count-approved').textContent = d.approved_business_count ?? 0;
-        document.getElementById('count-rejected').textContent = d.rejected_business_count ?? 0;
-
-        const pending = d.pending_approvals ?? 0;
-        document.getElementById('ad-pending-approvals').textContent = pending;
-        if (pending > 0) {
-            const badge = document.getElementById('ad-pending-badge');
-            badge.textContent = 'Urgent';
-            badge.classList.add('ad-stat-badge-urgent');
-            badge.style.display = '';
-        }
-    } catch(e) {
-        console.error('Stats load error:', e);
+    function showToast(msg, isError) {
+        const t = document.getElementById('ad-toast');
+        t.textContent = msg;
+        t.style.background = isError ? '#c0394a' : '#2e2820';
+        t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), 3500);
     }
-}
 
-/* ── Recalculate scores ── */
-async function recalcScores() {
-    const btn = document.getElementById('ad-recalc-btn');
-    const msgEl = document.getElementById('ad-recalc-msg');
-    const restId = document.getElementById('ad-rest-id').value.trim();
-    const restName = document.getElementById('ad-rest-name').value.trim();
+    /* ── Load summary stats ── */
+    async function loadStats() {
+        try {
+            const r = await apiFetch('/api/admin/dashboard-summary/');
+            if (!r.ok) return;
+            const d = await r.json();
+            document.getElementById('last-sync').textContent = `Last sync: ${new Date().toLocaleTimeString()}`;
 
-    btn.disabled = true;
-    btn.textContent = 'Recalculating…';
-    msgEl.style.display = 'none';
+            document.getElementById('ad-active-users').textContent = d.total_users ?? 0;
+            document.getElementById('ad-restaurants').textContent = d.total_restaurants ?? 0;
+            document.getElementById('ad-content-reports').textContent = d.pending_reports ?? 0;
+            document.getElementById('ad-suspicious').textContent = d.suspicious_accounts ?? 0;
+            document.getElementById('ad-flagged').textContent = d.flagged_content ?? 0;
 
-    try {
-        const body = {};
-        if (restId) body.restaurant_id = parseInt(restId);
-        if (restName) body.restaurant_name = restName;
+            // Action Card Counts
+            document.getElementById('count-moderation').textContent = d.pending_reports ?? 0;
+            document.getElementById('count-approvals').textContent = d.pending_approvals ?? 0;
+            document.getElementById('count-users').textContent = d.total_users ?? 0;
+            document.getElementById('count-logs').textContent = d.total_logs ?? 0;
+            document.getElementById('count-approved').textContent = d.approved_business_count ?? 0;
+            document.getElementById('count-rejected').textContent = d.rejected_business_count ?? 0;
 
-        const r = await apiFetch('/api/admin/recalculate-scores/', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-        });
-        const d = await r.json();
-        if (r.ok) {
-            const msg = d.message || `Recalculated scores for ${d.restaurants_updated ?? 'all'} restaurant(s).`;
-            msgEl.textContent = '✅ ' + msg;
-            msgEl.style.color = '#2c7a3a';
-            showToast(msg);
-        } else {
-            const msg = d.error || 'Recalculation failed.';
-            msgEl.textContent = '❌ ' + msg;
+            const pending = d.pending_approvals ?? 0;
+            document.getElementById('ad-pending-approvals').textContent = pending;
+            if (pending > 0) {
+                const badge = document.getElementById('ad-pending-badge');
+                badge.textContent = 'Urgent';
+                badge.classList.add('ad-stat-badge-urgent');
+                badge.style.display = '';
+            }
+        } catch (e) {
+            console.error('Stats load error:', e);
+        }
+    }
+
+    /* ── Recalculate scores ── */
+    async function recalcScores() {
+        const btn = document.getElementById('ad-recalc-btn');
+        const msgEl = document.getElementById('ad-recalc-msg');
+        const restId = document.getElementById('ad-rest-id').value.trim();
+        const restName = document.getElementById('ad-rest-name').value.trim();
+
+        btn.disabled = true;
+        btn.textContent = 'Recalculating…';
+        msgEl.style.display = 'none';
+
+        try {
+            const body = {};
+            if (restId) body.restaurant_id = parseInt(restId);
+            if (restName) body.restaurant_name = restName;
+
+            const r = await apiFetch('/api/admin/recalculate-scores/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            const d = await r.json();
+            if (r.ok) {
+                const msg = d.message || `Recalculated scores for ${d.restaurants_updated ?? 'all'} restaurant(s).`;
+                msgEl.textContent = '✅ ' + msg;
+                msgEl.style.color = '#2c7a3a';
+                showToast(msg);
+            } else {
+                const msg = d.error || 'Recalculation failed.';
+                msgEl.textContent = '❌ ' + msg;
+                msgEl.style.color = '#c0394a';
+                showToast(msg, true);
+            }
+        } catch (e) {
+            msgEl.textContent = '❌ Network error. Try again.';
             msgEl.style.color = '#c0394a';
-            showToast(msg, true);
+            showToast('Network error', true);
+        } finally {
+            msgEl.style.display = 'block';
+            btn.disabled = false;
+            btn.textContent = 'Recalculate';
         }
-    } catch(e) {
-        msgEl.textContent = '❌ Network error. Try again.';
-        msgEl.style.color = '#c0394a';
-        showToast('Network error', true);
-    } finally {
-        msgEl.style.display = 'block';
-        btn.disabled = false;
-        btn.textContent = 'Recalculate';
     }
-}
 
-/* ── Score anomalies ── */
-let anomaliesLoaded = false;
-let anomaliesVisible = false;
+    /* ── Score anomalies ── */
+    let anomaliesLoaded = false;
+    let anomaliesVisible = false;
 
-async function toggleAnomalies() {
-    const content = document.getElementById('ad-anomaly-content');
-    const btn = document.getElementById('ad-show-anomalies-btn');
+    async function toggleAnomalies() {
+        const content = document.getElementById('ad-anomaly-content');
+        const btn = document.getElementById('ad-show-anomalies-btn');
 
-    anomaliesVisible = !anomaliesVisible;
-    content.style.display = anomaliesVisible ? 'block' : 'none';
-    btn.textContent = anomaliesVisible ? 'Hide Anomalies' : 'Show Anomalies';
+        anomaliesVisible = !anomaliesVisible;
+        content.style.display = anomaliesVisible ? 'block' : 'none';
+        btn.textContent = anomaliesVisible ? 'Hide Anomalies' : 'Show Anomalies';
 
-    if (anomaliesVisible && !anomaliesLoaded) {
-        await loadAnomalies();
-    }
-}
-
-async function loadAnomalies() {
-    const tbody = document.getElementById('ad-anomaly-tbody');
-    try {
-        const r = await apiFetch('/api/admin/score-anomalies/');
-        if (!r.ok) { tbody.innerHTML = '<tr><td colspan="6" style="padding:16px 14px;color:#c0394a;">Failed to load anomalies.</td></tr>'; return; }
-        const d = await r.json();
-        const anomalies = d.anomalies || d.results || [];
-        anomaliesLoaded = true;
-
-        if (!anomalies.length) {
-            tbody.innerHTML = '<tr><td colspan="6" style="padding:16px 14px;color:#a09590;">No open score anomalies.</td></tr>';
-            return;
+        if (anomaliesVisible && !anomaliesLoaded) {
+            await loadAnomalies();
         }
+    }
 
-        tbody.innerHTML = anomalies.map(a => {
-            const sev = (a.severity || '').toUpperCase();
-            let sevClass = 'ad-sev-low';
-            if (sev === 'HIGH' || sev === 'CRITICAL') sevClass = 'ad-sev-high';
-            else if (sev === 'MEDIUM') sevClass = 'ad-sev-medium';
+    async function loadAnomalies() {
+        const tbody = document.getElementById('ad-anomaly-tbody');
+        try {
+            const r = await apiFetch('/api/admin/score-anomalies/');
+            if (!r.ok) { tbody.innerHTML = '<tr><td colspan="6" style="padding:16px 14px;color:#c0394a;">Failed to load anomalies.</td></tr>'; return; }
+            const d = await r.json();
+            const anomalies = d.anomalies || d.results || [];
+            anomaliesLoaded = true;
 
-            const date = a.created_at ? new Date(a.created_at).toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'}) : '—';
-            const details = a.details?.message || (typeof a.details === 'string' ? a.details : '') || '—';
+            if (!anomalies.length) {
+                tbody.innerHTML = '<tr><td colspan="6" style="padding:16px 14px;color:#a09590;">No open score anomalies.</td></tr>';
+                return;
+            }
 
-            return `<tr>
+            tbody.innerHTML = anomalies.map(a => {
+                const sev = (a.severity || '').toUpperCase();
+                let sevClass = 'ad-sev-low';
+                if (sev === 'HIGH' || sev === 'CRITICAL') sevClass = 'ad-sev-high';
+                else if (sev === 'MEDIUM') sevClass = 'ad-sev-medium';
+
+                const date = a.created_at ? new Date(a.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+                const details = a.details?.message || (typeof a.details === 'string' ? a.details : '') || '—';
+
+                return `<tr>
                 <td>${date}</td>
                 <td>${a.restaurant_name || a.restaurant || '—'}</td>
                 <td>${a.anomaly_type_display || a.anomaly_type || '—'}</td>
@@ -693,50 +894,50 @@ async function loadAnomalies() {
                     <button class="ad-resolve-btn" onclick="resolveAnomaly(${a.id}, this)">Mark Resolved</button>
                 </td>
             </tr>`;
-        }).join('');
-    } catch(e) {
-        tbody.innerHTML = '<tr><td colspan="6" style="padding:16px 14px;color:#c0394a;">Error loading anomalies.</td></tr>';
+            }).join('');
+        } catch (e) {
+            tbody.innerHTML = '<tr><td colspan="6" style="padding:16px 14px;color:#c0394a;">Error loading anomalies.</td></tr>';
+        }
     }
-}
 
-async function resolveAnomaly(anomalyId, btn) {
-    btn.disabled = true;
-    btn.textContent = 'Resolving…';
-    try {
-        const r = await apiFetch(`/api/admin/score-anomalies/${anomalyId}/resolve/`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
-            body: JSON.stringify({})
-        });
-        if (r.ok) {
-            btn.closest('tr').style.opacity = '0.4';
-            btn.textContent = 'Resolved ✓';
-            showToast('Anomaly marked as resolved.');
-        } else {
+    async function resolveAnomaly(anomalyId, btn) {
+        btn.disabled = true;
+        btn.textContent = 'Resolving…';
+        try {
+            const r = await apiFetch(`/api/admin/score-anomalies/${anomalyId}/resolve/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+                body: JSON.stringify({})
+            });
+            if (r.ok) {
+                btn.closest('tr').style.opacity = '0.4';
+                btn.textContent = 'Resolved ✓';
+                showToast('Anomaly marked as resolved.');
+            } else {
+                btn.disabled = false;
+                btn.textContent = 'Mark Resolved';
+                showToast('Failed to resolve anomaly.', true);
+            }
+        } catch (e) {
             btn.disabled = false;
             btn.textContent = 'Mark Resolved';
-            showToast('Failed to resolve anomaly.', true);
+            showToast('Network error.', true);
         }
-    } catch(e) {
-        btn.disabled = false;
-        btn.textContent = 'Mark Resolved';
-        showToast('Network error.', true);
     }
-}
 
-function getCsrfToken() {
-    const match = document.cookie.match(/csrftoken=([^;]+)/);
-    return match ? match[1] : '';
-}
+    function getCsrfToken() {
+        const match = document.cookie.match(/csrftoken=([^;]+)/);
+        return match ? match[1] : '';
+    }
 
-/* Keyboard shortcut: Enter on score inputs triggers recalc */
-['ad-rest-id','ad-rest-name'].forEach(id => {
-    document.getElementById(id)?.addEventListener('keydown', e => {
-        if (e.key === 'Enter') recalcScores();
+    /* Keyboard shortcut: Enter on score inputs triggers recalc */
+    ['ad-rest-id', 'ad-rest-name'].forEach(id => {
+        document.getElementById(id)?.addEventListener('keydown', e => {
+            if (e.key === 'Enter') recalcScores();
+        });
     });
-});
 
-loadStats();
-setInterval(loadStats, 5000);
+    loadStats();
+    setInterval(loadStats, 5000);
 </script>
 {% endblock %}
