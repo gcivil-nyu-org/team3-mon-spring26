@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>nomz</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'nomz/css/main.css' %}">
+</head>
+<body style="margin: 0; padding: 0; height: 100vh; display: flex; align-items: center; justify-content: center; background-color: var(--paper); overflow: hidden;">
+    <h1 id="logo" style="font-size: 72px; font-family: var(--font-serif); font-weight: 900; color: var(--ink); letter-spacing: 4px;">
+        <span style="display: inline-block; opacity: 0;">n</span>
+        <span style="display: inline-block; opacity: 0;">o</span>
+        <span style="display: inline-block; opacity: 0;">m</span>
+        <span style="display: inline-block; opacity: 0;">z</span>
+    </h1>
+    <script>
+    const letters = document.querySelectorAll('#logo span');
+    letters.forEach((letter, i) => {
+        setTimeout(() => {
+            letter.style.transition = 'opacity 0.8s, transform 0.8s';
+            letter.style.opacity = '1';
+            letter.style.transform = 'scale(1)';
+        }, i * 150);
+    });
+    setTimeout(() => window.location.href = '/home/', 2000);
+    </script>
+</body>
+</html>

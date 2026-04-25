@@ -1,0 +1,1066 @@
+{% extends 'nomz/base.html' %}
+{% load static %}
+
+{% block title %}{{ restaurant.name }} - nomz{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Restaurant Detail Styles - Premium Modern UI */
+
+    body {
+        background: linear-gradient(135deg, var(--paper) 0%, rgba(200,169,110,0.1) 100%);
+        font-family: var(--font-sans);
+        margin: 0;
+        padding: 0;
+        position: relative;
+        overflow-x: hidden;
+    }
+
+    /* Hide global navbar and footer to use custom unified header */
+    nav.navbar { display: none !important; }
+    body > footer { display: none !important; }
+
+    /* Floating Gradient Orbs */
+    body::before {
+        content: '';
+        position: fixed;
+        top: -200px;
+        right: -200px;
+        width: 600px;
+        height: 600px;
+        background: radial-gradient(circle, rgba(212, 43, 43, 0.15) 0%, transparent 70%);
+        border-radius: 50%;
+        z-index: 0;
+        animation: float 20s ease-in-out infinite;
+    }
+
+    body::after {
+        content: '';
+        position: fixed;
+        bottom: -150px;
+        left: -150px;
+        width: 500px;
+        height: 500px;
+        background: radial-gradient(circle, rgba(255, 182, 193, 0.12) 0%, transparent 70%);
+        border-radius: 50%;
+        z-index: 0;
+        animation: float 25s ease-in-out infinite reverse;
+    }
+
+    @keyframes float {
+        0%, 100% {
+            transform: translate(0, 0) scale(1);
+        }
+        33% {
+            transform: translate(30px, -30px) scale(1.1);
+        }
+        66% {
+            transform: translate(-20px, 20px) scale(0.9);
+        }
+    }
+
+    #main-content {
+        background: transparent;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+        position: relative;
+        z-index: 1;
+    }
+
+
+    .nav-left {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .back-button {
+        font-size: 1.125rem;
+        padding: 0.4rem 0.65rem;
+        border-radius: 12px;
+        background: rgba(212, 43, 43, 0.1);
+        border: 1px solid rgba(212, 43, 43, 0.2);
+        cursor: pointer;
+        color: var(--red);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .back-button:hover {
+        background: rgba(212, 43, 43, 0.2);
+        transform: translateX(-3px);
+    }
+
+    .detail-logo {
+        font-size: 1.5rem;
+        font-family: var(--font-sans);
+        background: linear-gradient(135deg, var(--red) 0%, rgba(212,43,43,0.85) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-weight: 700;
+        margin: 0;
+    }
+
+    .nav-right {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .nav-icon {
+        font-size: 1.125rem;
+        padding: 0.5rem;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.6);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(212, 43, 43, 0.2);
+        cursor: pointer;
+        color: var(--red);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .nav-icon:hover {
+        background: rgba(212, 43, 43, 0.1);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(212, 43, 43, 0.15);
+    }
+
+    /* Main Content */
+    .detail-main {
+        flex: 1;
+        width: 100%;
+        max-width: 80rem;
+        margin: 0 auto;
+        padding: 2rem 2rem;
+        animation: fadeInUp 0.8s ease-out 0.2s backwards;
+    }
+
+    /* Alert Banners with Glass Effect */
+    .alert-banner {
+        margin-bottom: 1.5rem;
+        padding: 1.25rem 1.5rem;
+        border-radius: 16px;
+        font-family: var(--font-sans);
+        font-size: 0.875rem;
+        background: rgba(255, 255, 255, 0.6);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+        animation: fadeInUp 0.6s ease-out;
+    }
+
+    .alert-owner-flagged {
+        border: 1px solid rgba(220, 38, 38, 0.3);
+        color: #dc2626;
+        background: linear-gradient(135deg, rgba(220, 38, 38, 0.08) 0%, rgba(220, 38, 38, 0.12) 100%);
+    }
+
+    .alert-restaurant-flagged {
+        border: 1px solid rgba(234, 179, 8, 0.3);
+        color: #a16207;
+        background: linear-gradient(135deg, rgba(234, 179, 8, 0.08) 0%, rgba(234, 179, 8, 0.12) 100%);
+    }
+
+    .alert-banner p {
+        margin: 0;
+        font-weight: 500;
+    }
+
+    /* Two Column Layout */
+    .detail-layout {
+        display: flex;
+        gap: 2rem;
+    }
+
+    /* Left Column - Details + Reviews */
+    .detail-left {
+        flex: 1;
+        min-width: 0;
+    }
+
+    /* Restaurant Info Card - Glass Morphism */
+    .restaurant-card {
+        border-radius: 24px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(212, 43, 43, 0.15);
+        box-shadow:
+            0 8px 32px rgba(0, 0, 0, 0.08),
+            0 2px 8px rgba(212, 43, 43, 0.05),
+            inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        animation: fadeInUp 0.8s ease-out 0.3s backwards;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .restaurant-card:hover {
+        transform: translateY(-4px);
+        box-shadow:
+            0 12px 48px rgba(0, 0, 0, 0.12),
+            0 4px 16px rgba(212, 43, 43, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+
+    .restaurant-name {
+        font-size: 2rem;
+        margin-bottom: 0.75rem;
+        font-family: var(--font-sans);
+        background: linear-gradient(135deg, var(--red) 0%, rgba(212,43,43,0.85) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-weight: 700;
+    }
+
+    .cuisine-badge {
+        display: inline-block;
+        padding: 0.5rem 1.25rem;
+        border-radius: 9999px;
+        font-size: 0.875rem;
+        margin-bottom: 1rem;
+        background: linear-gradient(135deg, var(--red) 0%, rgba(212,43,43,0.85) 100%);
+        color: white;
+        font-family: var(--font-sans);
+        font-weight: 600;
+        box-shadow: 0 4px 12px rgba(212, 43, 43, 0.3);
+        transition: all 0.3s ease;
+    }
+
+    .cuisine-badge:hover {
+        transform: scale(1.05);
+        box-shadow: 0 6px 16px rgba(212, 43, 43, 0.4);
+    }
+
+    .cuisine-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .cuisine-tag {
+        display: inline-block;
+        padding: 0.375rem 0.875rem;
+        border-radius: 9999px;
+        font-size: 0.8125rem;
+        background: rgba(212, 43, 43, 0.12);
+        color: var(--red);
+        font-family: var(--font-sans);
+        font-weight: 500;
+        border: 1px solid rgba(212, 43, 43, 0.2);
+        transition: all 0.3s ease;
+    }
+
+    .cuisine-tag:hover {
+        background: rgba(212, 43, 43, 0.2);
+        transform: translateY(-2px);
+    }
+
+    .restaurant-info {
+        font-size: 0.9375rem;
+        margin-bottom: 0.875rem;
+        font-family: var(--font-sans);
+        color: #555;
+        font-weight: 500;
+    }
+
+    .divider {
+        border: none;
+        border-top: 1px solid rgba(212, 43, 43, 0.15);
+        margin: 1.25rem 0;
+        background: linear-gradient(90deg, transparent 0%, rgba(212, 43, 43, 0.2) 50%, transparent 100%);
+        height: 1px;
+    }
+
+    .section-subtitle {
+        font-size: 1rem;
+        margin-bottom: 0.75rem;
+        font-family: var(--font-sans);
+        color: #333;
+        font-weight: 700;
+    }
+
+    .description-text {
+        font-size: 0.9375rem;
+        font-family: var(--font-sans);
+        color: #555;
+        line-height: 1.7;
+        font-weight: 400;
+    }
+
+    /* Reviews Section */
+    .reviews-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.5rem;
+        animation: fadeInUp 0.8s ease-out 0.4s backwards;
+    }
+
+    .reviews-title {
+        font-size: 1.5rem;
+        font-family: var(--font-sans);
+        background: linear-gradient(135deg, #333 0%, #555 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-weight: 700;
+    }
+
+    .write-review-button {
+        padding: 0.75rem 1.5rem;
+        border-radius: 12px;
+        font-size: 0.9375rem;
+        color: white;
+        background: linear-gradient(135deg, var(--red) 0%, rgba(212,43,43,0.85) 100%);
+        border: none;
+        cursor: pointer;
+        font-family: var(--font-sans);
+        font-weight: 600;
+        box-shadow: 0 4px 12px rgba(212, 43, 43, 0.3);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .write-review-button::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.3);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
+    }
+
+    .write-review-button:hover::before {
+        width: 300px;
+        height: 300px;
+    }
+
+    .sidebar-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        margin-top: 1rem;
+    }
+
+    .sidebar-action-btn {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border-radius: 14px;
+        font-size: 0.8125rem;
+        font-family: var(--font-sans);
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.625rem;
+        text-decoration: none;
+    }
+
+    .btn-message {
+        background: linear-gradient(135deg, var(--red) 0%, rgba(212,43,43,0.85) 100%);
+        color: white;
+        border: none;
+        box-shadow: 0 4px 12px rgba(212, 43, 43, 0.2);
+    }
+
+    .btn-review {
+        background: linear-gradient(135deg, var(--red) 0%, rgba(212,43,43,0.85) 100%) !important;
+        color: white !important;
+        border: none !important;
+        box-shadow: 0 4px 12px rgba(212, 43, 43, 0.2) !important;
+    }
+
+    .btn-message:hover, .btn-review:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 6px 16px rgba(212, 43, 43, 0.3) !important;
+        opacity: 0.9;
+    }
+
+    .btn-report {
+        background: rgba(255, 255, 255, 0.5);
+        color: #dc2626;
+        border: 1.5px solid rgba(220, 38, 38, 0.3);
+        backdrop-filter: blur(10px);
+    }
+
+    .btn-report:hover {
+        background: rgba(220, 38, 38, 0.05);
+        border-color: rgba(220, 38, 38, 0.5);
+        transform: translateY(-2px);
+    }
+
+    .sidebar-action-btn:disabled, .sidebar-action-btn.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none !important;
+        box-shadow: none !important;
+    }
+
+    .owner-info-card {
+        padding: 1rem;
+        background: rgba(212, 43, 43, 0.05);
+        border-radius: 16px;
+        border: 1px solid rgba(212, 43, 43, 0.1);
+        margin-bottom: 1rem;
+    }
+
+    .owner-label {
+        font-size: 0.6875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--red);
+        font-weight: 700;
+        margin-bottom: 0.25rem;
+        display: block;
+    }
+
+    .owner-name {
+        font-size: 0.9375rem;
+        font-weight: 700;
+        color: #333;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    /* No Reviews */
+    .no-reviews {
+        border-radius: 24px;
+        padding: 3rem 2rem;
+        text-align: center;
+        background: rgba(255, 255, 255, 0.6);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(212, 43, 43, 0.15);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+        animation: fadeInUp 0.8s ease-out 0.5s backwards;
+    }
+
+    .no-reviews p {
+        font-family: var(--font-sans);
+        color: #999;
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 500;
+    }
+
+    /* Review Card */
+    .review-card {
+        border-radius: 0.5rem;
+        padding: 1.25rem;
+        margin-bottom: 0.75rem;
+        background-color: white;
+        border: 2px solid rgba(212, 43, 43, 0.1);
+    }
+
+    .review-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 0.5rem;
+    }
+
+    .review-user-rating {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .review-username {
+        font-size: 0.875rem;
+        font-weight: bold;
+        font-family: var(--font-sans);
+        color: #333;
+    }
+
+    .stars {
+        color: #eab308;
+        letter-spacing: 1px;
+    }
+
+    .review-date {
+        font-size: 0.75rem;
+        font-family: var(--font-sans);
+        color: #999;
+    }
+
+    .review-comment {
+        font-size: 0.875rem;
+        margin-bottom: 0.5rem;
+        font-family: var(--font-sans);
+        color: #555;
+        line-height: 1.6;
+    }
+
+    .review-ratings {
+        font-size: 0.75rem;
+        margin-bottom: 0.5rem;
+        font-family: var(--font-sans);
+        color: #999;
+    }
+
+    /* Owner Response */
+    .owner-response {
+        margin-top: 0.75rem;
+        padding: 0.75rem;
+        border-radius: 0.5rem;
+        background-color: rgba(212, 43, 43, 0.05);
+        border-left: 3px solid var(--red);
+    }
+
+    .owner-response-label {
+        font-size: 0.75rem;
+        margin-bottom: 0.25rem;
+        font-family: var(--font-sans);
+        color: var(--red);
+        font-weight: 600;
+    }
+
+    .owner-response-text {
+        font-size: 0.875rem;
+        font-family: var(--font-sans);
+        color: #555;
+        line-height: 1.6;
+    }
+
+    .owner-response-meta {
+        font-size: 0.75rem;
+        margin-top: 0.25rem;
+        font-family: var(--font-sans);
+        color: #999;
+    }
+
+    /* Report Review Button */
+    .review-actions {
+        display: flex;
+        justify-content: flex-end;
+    }
+
+    .report-review-button {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.75rem;
+        border-radius: 0.25rem;
+        color: #dc2626;
+        border: 1px solid rgba(220, 38, 38, 0.2);
+        background-color: transparent;
+        cursor: pointer;
+        font-family: var(--font-sans);
+        transition: all 0.2s;
+    }
+
+    .report-review-button:hover {
+        background-color: rgba(220, 38, 38, 0.05);
+    }
+
+    /* Right Sidebar */
+    .detail-sidebar {
+        width: 16rem;
+        flex-shrink: 0;
+    }
+
+    .sidebar-card {
+        border-radius: 0.5rem;
+        padding: 1.25rem;
+        position: sticky;
+        top: 1rem;
+        background-color: white;
+        border: 2px solid rgba(212, 43, 43, 0.1);
+    }
+
+    .sidebar-title {
+        font-size: 0.875rem;
+        margin-bottom: 0.75rem;
+        font-family: var(--font-sans);
+        color: #333;
+        font-weight: 600;
+    }
+
+    .sidebar-subtitle {
+        font-size: 0.75rem;
+        margin-bottom: 1rem;
+        font-family: var(--font-sans);
+        color: #999;
+    }
+
+    .sidebar-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .message-button {
+        width: 100%;
+        padding: 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.75rem;
+        color: white;
+        background-color: var(--red);
+        border: none;
+        cursor: pointer;
+        font-family: var(--font-sans);
+    }
+
+    .message-button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .message-unavailable-button {
+        width: 100%;
+        padding: 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.75rem;
+        background-color: #e5e7eb;
+        border: none;
+        cursor: not-allowed;
+        font-family: var(--font-sans);
+        color: #999;
+    }
+
+    .report-owner-button {
+        width: 100%;
+        padding: 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.75rem;
+        border: 1px solid rgba(234, 179, 8, 0.3);
+        background-color: transparent;
+        cursor: pointer;
+        font-family: var(--font-sans);
+        color: #a16207;
+        transition: all 0.2s;
+    }
+
+    .report-owner-button:hover {
+        background-color: rgba(234, 179, 8, 0.05);
+    }
+
+    .no-owner-button {
+        width: 100%;
+        padding: 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.75rem;
+        background-color: #e5e7eb;
+        border: none;
+        cursor: not-allowed;
+        font-family: var(--font-sans);
+        color: #999;
+    }
+
+    /* Loading State */
+    .loading-container {
+        width: 100%;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: var(--paper);
+    }
+
+    .loading-text {
+        font-family: var(--font-sans);
+        color: var(--red);
+    }
+
+    /* Error State */
+    .error-container {
+        width: 100%;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        background-color: var(--paper);
+    }
+
+    .error-text {
+        font-family: var(--font-sans);
+        color: #b91c1c;
+    }
+
+    .error-back-button {
+        font-family: var(--font-sans);
+        color: var(--red);
+        background: none;
+        border: none;
+        cursor: pointer;
+        text-decoration: underline;
+    }
+
+    /* Footer */
+    .detail-footer {
+        width: 100%;
+        padding: 2rem;
+        text-align: center;
+        background-color: rgba(212, 43, 43, 0.04);
+    }
+
+    .footer-text {
+        font-size: 0.75rem;
+        font-family: var(--font-sans);
+        color: #999;
+        margin: 0;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .detail-layout {
+            flex-direction: column;
+        }
+
+        .detail-sidebar {
+            width: 100%;
+        }
+
+        .sidebar-card {
+            position: static;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block main_layout %}
+<!-- Modern full-width layout wrapper -->
+<div style="background: linear-gradient(135deg, var(--paper) 0%, rgba(200,169,110,0.12) 50%, var(--paper) 100%); min-height: 100vh; display: flex; flex-direction: column; position: relative; overflow-x: hidden;">
+    
+    <!-- Floating Gradient Orbs (Dashboard Style) -->
+    <div style="position: absolute; top: 10%; left: 5%; width: 400px; height: 400px; background: radial-gradient(circle, rgba(212, 43, 43, 0.15) 0%, transparent 70%); border-radius: 50%; opacity: 0.6; pointer-events: none;"></div>
+    <div style="position: absolute; bottom: 15%; right: 8%; width: 500px; height: 500px; background: radial-gradient(circle, rgba(212, 43, 43, 0.1) 0%, transparent 70%); border-radius: 50%; opacity: 0.6; pointer-events: none;"></div>
+    <div style="min-height: 100vh; display: flex; flex-direction: column; position: relative; z-index: 1;">
+    {% include 'nomz/components/premium_nav.html' %}
+
+    <!-- Main Content Container -->
+    <div id="restaurant-content">
+        <!-- Loading state shown initially, replaced by JavaScript -->
+        <div class="loading-container">
+            <p class="loading-text">Loading…</p>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer style="border-top:2px solid var(--ink);padding:20px 6vw;display:flex;justify-content:space-between;align-items:center;background:var(--paper);">
+        <span style="font-family:var(--font-serif);font-style:italic;font-size:13px;color:var(--tan);">Good food, always.</span>
+        <span style="font-size:10px;letter-spacing:0.3em;text-transform:uppercase;color:var(--mid);">nomz</span>
+    </footer>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Restaurant Detail JavaScript - Matching RestaurantDetail.tsx functionality
+
+    const restaurantId = {{ restaurant_id }};
+    let restaurantData = null;
+    let sessionUserId = null;
+    let cancelled = false;
+
+    // Get current session user
+    async function getSessionUser() {
+        try {
+            const response = await apiFetch('/api/auth/session/');
+            const data = await response.json();
+            if (!cancelled && data.authenticated && typeof data.user_id === 'number') {
+                sessionUserId = data.user_id;
+            }
+        } catch (error) {
+            console.error('Session check error:', error);
+        }
+    }
+
+    // Fetch restaurant data
+    async function loadRestaurant() {
+        try {
+            const response = await apiFetch(`/api/restaurants/${restaurantId}/`);
+
+            if (!response.ok) {
+                showError(`Error ${response.status}`);
+                return;
+            }
+
+            const data = await response.json();
+            if (!cancelled) {
+                restaurantData = data;
+                renderRestaurant(data);
+            }
+        } catch (error) {
+            console.error('Error loading restaurant:', error);
+            if (!cancelled) {
+                showError('Network error.');
+            }
+        }
+    }
+
+    // Render restaurant details
+    function renderRestaurant(data) {
+        const container = document.getElementById('restaurant-content');
+
+        let html = '<main class="detail-main">';
+
+        // Flagging alerts
+        if (data.is_owner_flagged) {
+            html += `
+                <div class="alert-banner alert-owner-flagged">
+                    <p>⚠️ <strong>Owner Flagged for Fraud</strong> — The owner of this account has been flagged for fraudulent activity. Proceed with caution.</p>
+                </div>
+            `;
+        } else if (data.is_flagged) {
+            html += `
+                <div class="alert-banner alert-restaurant-flagged">
+                    <p>⚠️ <strong>Profile Flagged</strong> — This restaurant has been flagged for suspicious activity. Proceed with caution.</p>
+                </div>
+            `;
+        }
+
+        html += '<div class="detail-layout">';
+
+        // Left column - restaurant details and reviews
+        html += '<div class="detail-left">';
+
+        // Restaurant card
+        html += '<div class="restaurant-card">';
+        html += `<h2 class="restaurant-name">${escapeHtml(data.name)}</h2>`;
+
+        if (data.cuisine) {
+            html += `<span class="cuisine-badge">${escapeHtml(data.cuisine)}</span>`;
+        } else if (data.cuisine_tags && data.cuisine_tags.length > 0) {
+            html += '<div class="cuisine-tags">';
+            data.cuisine_tags.forEach(tag => {
+                html += `<span class="cuisine-tag">${escapeHtml(tag)}</span>`;
+            });
+            html += '</div>';
+        }
+
+        html += `<p class="restaurant-info"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2" style="display:inline;vertical-align:middle;margin-right:4px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> ${data.neighborhood ? escapeHtml(data.neighborhood) + ' | ' : ''}${escapeHtml(data.address)}</p>`;
+
+        if (data.phone) {
+            html += `<p class="restaurant-info"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2" style="display:inline;vertical-align:middle;margin-right:4px;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.18 2 2 0 0 1 3.5 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.69a16 16 0 0 0 6.4 6.4l.83-.86a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg> ${escapeHtml(data.phone)}</p>`;
+        }
+
+        if (data.composite_score !== null) {
+            html += `<p class="restaurant-info">Composite Score: <strong style="color: var(--red);">${data.composite_score.toFixed(1)}</strong>${data.grade ? ` · Grade: ${escapeHtml(data.grade)}` : ''}</p>`;
+        }
+
+        if (data.description) {
+            html += '<hr class="divider">';
+            html += '<h5 class="section-subtitle">Description</h5>';
+            html += `<p class="description-text">${escapeHtml(data.description)}</p>`;
+        }
+
+        html += '</div>'; // End restaurant card
+
+        // Reviews header
+        html += '<div class="reviews-header">';
+        html += '<h3 class="reviews-title">Customer Reviews</h3>';
+        html += '</div>';
+
+        // Reviews list
+        if (data.reviews.length === 0) {
+            html += '<div class="no-reviews"><p>No reviews yet. Be the first to review!</p></div>';
+        } else {
+            data.reviews.forEach(review => {
+                html += '<div class="review-card">';
+
+                // Review header
+                html += '<div class="review-header">';
+                html += '<div class="review-user-rating">';
+                html += `<strong class="review-username">${escapeHtml(review.username)}</strong>`;
+                html += `<span class="stars">${renderStars(review.rating)}</span>`;
+                html += '</div>';
+                html += `<span class="review-date">${formatReviewDate(review.created_at)}</span>`;
+                html += '</div>';
+
+                // Review comment
+                if (review.comment) {
+                    html += `<p class="review-comment">${escapeHtml(review.comment)}</p>`;
+                }
+
+                // Detailed ratings
+                html += `<p class="review-ratings">Food ${review.food_quality_rating}/5 · Service ${review.service_quality_rating}/5 · Ambience ${review.ambience_rating}/5 · Location ${review.location_rating}/5 · Value ${review.value_rating}/5 · Dietary ${review.dietary_accommodation_rating}/5 · Cleanliness ${review.cleanliness_rating}/5</p>`;
+
+                // Owner response
+                if (review.owner_response) {
+                    html += '<div class="owner-response">';
+                    html += '<p class="owner-response-label">Owner Response</p>';
+                    html += `<p class="owner-response-text">${escapeHtml(review.owner_response.response_text)}</p>`;
+                    html += `<p class="owner-response-meta">— ${escapeHtml(review.owner_response.responder_username)}, ${formatReviewDate(review.owner_response.updated_at)}</p>`;
+                    html += '</div>';
+                }
+
+                // Report button (only show to restaurant owner)
+                if (sessionUserId !== null && data.owner_id === sessionUserId) {
+                    html += '<div class="review-actions">';
+                    html += `<button class="report-review-button" onclick="reportReview(${review.id})" title="Report this review"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;vertical-align:middle;margin-right:3px;"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg> Report</button>`;
+                    html += '</div>';
+                }
+
+                html += '</div>'; // End review card
+            });
+        }
+
+        html += '</div>'; // End left column
+
+        // Right sidebar
+        html += '<div class="detail-sidebar">';
+        html += '<div class="sidebar-card">';
+        html += '<h5 class="sidebar-title">About this Restaurant</h5>';
+        html += '<p class="sidebar-subtitle">Verified restaurant on Nomz.</p>';
+        html += '<hr class="divider">';
+
+        // Owner info card
+        if (data.owner_username) {
+            html += `
+                <div class="owner-info-card">
+                    <span class="owner-label">Verified Owner</span>
+                    <div class="owner-name">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        ${escapeHtml(data.owner_username)}
+                    </div>
+                </div>
+            `;
+        }
+
+        html += '<div class="sidebar-actions">';
+
+        // Write Review button (now in sidebar for visibility)
+        html += `
+            <button class="sidebar-action-btn btn-review" onclick="writeReview(${data.id})">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                Write a Review
+            </button>
+        `;
+
+        // Message restaurant button - always visible, using same style as review button
+        html += `
+            <button class="sidebar-action-btn btn-review" onclick="messageRestaurant(${data.id}, '${escapeHtml(data.name).replace(/'/g, "\\'")}')" ${(!data.owner_id || !data.messaging_enabled) ? 'disabled style="opacity:0.8; cursor:not-allowed;"' : ''}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+                ${(!data.owner_id || !data.messaging_enabled) ? 'Messaging Unavailable' : 'Message Restaurant'}
+            </button>
+        `;
+
+        // Report owner button
+        if (data.owner_id) {
+            html += `
+                <button class="sidebar-action-btn btn-report" onclick="reportOwner(${data.owner_id})">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                    Report Owner / Account
+                </button>
+            `;
+        } else {
+            html += `
+                <button class="sidebar-action-btn btn-report disabled" disabled>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                    No Owner Info
+                </button>
+            `;
+        }
+
+        html += '</div>'; // End sidebar actions
+        html += '</div>'; // End sidebar card
+        html += '</div>'; // End sidebar
+
+        html += '</div>'; // End detail-layout
+        html += '</main>';
+
+        container.innerHTML = html;
+    }
+
+    // Render star rating
+    function renderStars(rating) {
+        const filled = '★'.repeat(rating);
+        const empty = '☆'.repeat(5 - rating);
+        return filled + empty;
+    }
+
+    // Format review date
+    function formatReviewDate(dateString) {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    // Escape HTML to prevent XSS
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Show error state
+    function showError(message) {
+        const container = document.getElementById('restaurant-content');
+        container.innerHTML = `
+            <div class="error-container">
+                <p class="error-text">${message || 'Restaurant not found.'}</p>
+                <button class="error-back-button" onclick="goBack()">← Back</button>
+            </div>
+        `;
+    }
+
+    // Navigation functions
+    function goBack() {
+        if (window.history.length > 1) {
+            window.history.back();
+        } else {
+            window.location.href = '/dashboard/';
+        }
+    }
+
+    function writeReview(restaurantId) {
+        window.location.href = `/restaurant/${restaurantId}/review/`;
+    }
+
+    function reportReview(reviewId) {
+        window.location.href = `/report/review/${reviewId}/`;
+    }
+
+    // Sidebar Actions
+    function messageRestaurant(restaurantId, restaurantName) {
+        window.location.href = `/messages/?restaurant=${restaurantId}`;
+    }
+
+    function reportOwner(ownerId) {
+        window.location.href = `/report/user/${ownerId}/`;
+    }
+
+    // Recommendation Modal Logic Removed
+
+    // Get CSRF token from cookie
+    function getCSRFToken() {
+        const cookieValue = document.cookie
+            .split('; ')
+            .find(row => row.startsWith('csrftoken='));
+        return cookieValue ? cookieValue.split('=')[1] : null;
+    }
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', () => {
+        cancelled = true;
+    });
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', async () => {
+        await getSessionUser();
+        await loadRestaurant();
+    });
+</script>
+
+</div> <!-- End of full-width div -->
+</div> <!-- End of overflow wrapper -->
+{% endblock %}

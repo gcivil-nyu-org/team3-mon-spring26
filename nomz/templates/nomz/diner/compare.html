@@ -1,0 +1,147 @@
+{% extends 'nomz/base.html' %}
+{% load static %}
+{% block title %}Compare Restaurants — nomz{% endblock %}
+
+{% block main_layout %}
+<style>
+    nav.navbar, body > footer { display: none !important; }
+    body { background: var(--paper); }
+    .compare-grid { display: grid; gap: 1rem; overflow-x: auto; }
+    .compare-table { width: 100%; min-width: 740px; border-collapse: collapse; }
+    .compare-table th, .compare-table td { padding: 14px 16px; border: 1px solid rgba(34,34,34,0.08); text-align: left; vertical-align: top; }
+    .compare-table th { background: rgba(224,110,127,0.08); color: #222; font-weight: 700; }
+    .compare-attribute { width: 240px; min-width: 240px; background: rgba(34,34,34,0.02); font-weight: 700; }
+    .compare-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px; flex-wrap:wrap; }
+    .empty-state { padding: 40px; background: white; border: 1px solid rgba(34,34,34,0.08); text-align: center; color: var(--mid); }
+</style>
+
+<main style="max-width:1100px;margin:0 auto;padding:40px 6vw;">
+    <div style="border-bottom:2px solid var(--ink);padding-bottom:16px;margin-bottom:24px;">
+        <span class="editorial-label">Compare</span>
+        <h1 style="font-family:var(--font-serif);font-size:clamp(1.75rem,4vw,2.5rem);font-weight:900;color:var(--ink);">Compare Restaurants</h1>
+        <p style="font-size:14px;color:var(--mid);max-width:44rem;">View selected restaurants side-by-side to compare cuisine, pricing, hours, ratings, and overall performance before choosing where to dine.</p>
+    </div>
+
+    <div class="compare-heading">
+        <div id="compare-heading-text" style="font-size:14px;color:var(--mid);"></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button type="button" class="btn btn-outline btn-sm" onclick="window.location.href='/search/'">Back to search</button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="window.location.href='/search/'">Clear selection</button>
+        </div>
+    </div>
+
+    <div id="compare-error" style="display:none;background:rgba(212,43,43,0.06);border-left:3px solid var(--red);padding:10px 14px;font-size:13px;color:var(--red);margin-bottom:16px;"></div>
+    <div id="compare-loading" style="font-size:13px;color:var(--mid);margin-bottom:20px;">Loading comparison…</div>
+    <div id="compare-content"></div>
+</main>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function getQueryParam(param) {
+    const params = new URLSearchParams(window.location.search);
+    return params.get(param);
+}
+
+function parseSelectedIds() {
+    const idsParam = getQueryParam('ids') || '';
+    return idsParam
+        .split(',')
+        .map(id => Number(id.trim()))
+        .filter(id => Number.isInteger(id) && id > 0);
+}
+
+function formatHours(restaurant) {
+    if (restaurant.hours_open && restaurant.hours_close) {
+        return `${restaurant.hours_open} – ${restaurant.hours_close}`;
+    }
+    return 'N/A';
+}
+
+function buildCell(value) {
+    return `<td>${value != null && value !== '' ? value : 'N/A'}</td>`;
+}
+
+function showError(message) {
+    const errorEl = document.getElementById('compare-error');
+    errorEl.textContent = message;
+    errorEl.style.display = 'block';
+    document.getElementById('compare-loading').style.display = 'none';
+    document.getElementById('compare-content').innerHTML = '';
+}
+
+async function fetchRestaurantDetails(ids) {
+    const restaurantPromises = ids.map(id =>
+        apiFetch(`/api/restaurants/${id}/`).then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to load restaurant details.');
+            }
+            return response.json();
+        })
+    );
+    return Promise.all(restaurantPromises);
+}
+
+function renderComparison(restaurants) {
+    const content = document.getElementById('compare-content');
+    if (restaurants.length < 2) {
+        content.innerHTML = `
+            <div class="empty-state">
+                <h3>Select at least two restaurants to compare.</h3>
+                <p>Use the search results page to choose restaurants for a side-by-side comparison.</p>
+            </div>
+        `;
+        document.getElementById('compare-loading').style.display = 'none';
+        document.getElementById('compare-heading-text').textContent = `${restaurants.length} restaurant${restaurants.length === 1 ? '' : 's'} selected`;
+        return;
+    }
+
+    const headerRow = restaurants.map(r => `<th>${r.name}</th>`).join('');
+    const cuisineRow = restaurants.map(r => buildCell(r.cuisine || 'N/A')).join('');
+    const priceRow = restaurants.map(r => buildCell(r.price_range || 'N/A')).join('');
+    const hoursRow = restaurants.map(r => buildCell(formatHours(r))).join('');
+    const ratingRow = restaurants.map(r => buildCell(r.grade || 'N/A')).join('');
+    const scoreRow = restaurants.map(r => buildCell(r.composite_score != null ? Number(r.composite_score).toFixed(1) : 'N/A')).join('');
+
+    content.innerHTML = `
+        <div class="compare-grid">
+            <table class="compare-table">
+                <thead>
+                    <tr>
+                        <th class="compare-attribute">Attribute</th>
+                        ${headerRow}
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><th class="compare-attribute">Cuisine</th>${cuisineRow}</tr>
+                    <tr><th class="compare-attribute">Price range</th>${priceRow}</tr>
+                    <tr><th class="compare-attribute">Hours</th>${hoursRow}</tr>
+                    <tr><th class="compare-attribute">Rating</th>${ratingRow}</tr>
+                    <tr><th class="compare-attribute">Composite score</th>${scoreRow}</tr>
+                </tbody>
+            </table>
+        </div>
+    `;
+    document.getElementById('compare-loading').style.display = 'none';
+    document.getElementById('compare-heading-text').textContent = `${restaurants.length} restaurants selected for comparison`;
+}
+
+async function initComparison() {
+    const ids = parseSelectedIds();
+    if (ids.length === 0) {
+        showError('No restaurants selected for comparison.');
+        return;
+    }
+
+    try {
+        const restaurants = await fetchRestaurantDetails(ids);
+        renderComparison(restaurants);
+    } catch (error) {
+        console.error(error);
+        showError('Unable to load comparison data.');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', initComparison);
+</script>
+{% endblock %}

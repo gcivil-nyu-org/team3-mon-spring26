@@ -1,0 +1,258 @@
+{% extends 'nomz/base.html' %}
+{% load static %}
+{% block title %}Create Account — nomz{% endblock %}
+
+{% block main_layout %}
+<style>
+    nav.navbar, body > footer { display: none !important; }
+    body { background: var(--paper); }
+</style>
+
+<div class="auth-page">
+    <div class="auth-header">
+        <a href="/" class="auth-logo">nomz</a>
+        <span class="auth-header-rule"></span>
+        <span class="auth-header-label">Create Account</span>
+    </div>
+
+    <div class="auth-body">
+        <button onclick="window.location.href='/'" class="auth-back">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            Back
+        </button>
+
+        <div class="auth-card" style="max-width:600px;">
+            <h1 class="auth-title">Join nomz</h1>
+            <p class="auth-sub">Create your account to start exploring</p>
+
+            <p id="signup-error" class="auth-error" style="display:none;"></p>
+
+            <form id="signup-form" class="auth-form">
+                <div class="signup-grid">
+                    <div class="auth-field">
+                        <label for="name">Full Name</label>
+                        <input type="text" id="name" name="name" placeholder="your full name">
+                    </div>
+                    <div class="auth-field">
+                        <label for="username">Username</label>
+                        <input type="text" id="username" name="username" placeholder="choose a username" required>
+                    </div>
+                    <div class="auth-field">
+                        <label for="accountType">Account Type</label>
+                        <select id="accountType" name="accountType" required>
+                            <option value="" disabled selected>Select type</option>
+                            <option value="diner">Diner</option>
+                            <option value="restaurant">Restaurant</option>
+                        </select>
+                    </div>
+                    <div class="auth-field">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" name="email" placeholder="your email" required>
+                    </div>
+                    <div class="auth-field">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" name="password" placeholder="create a password" required>
+                    </div>
+                    <div class="auth-field">
+                        <label for="confirmPassword">Confirm Password</label>
+                        <input type="password" id="confirmPassword" name="confirmPassword" placeholder="confirm your password" required>
+                    </div>
+                </div>
+                <button type="submit" id="signup-submit" class="btn btn-primary w-full" style="margin-top:8px;">Create Account</button>
+            </form>
+
+            <p class="auth-footer-text">
+                Already have an account? <a href="/signin/" class="auth-link">Log in</a>
+            </p>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('signup-form');
+    const errorDisplay = document.getElementById('signup-error');
+    const submitButton = document.getElementById('signup-submit');
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        errorDisplay.style.display = 'none';
+        errorDisplay.textContent = '';
+        const accountType = document.getElementById('accountType').value;
+        const username = document.getElementById('username').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+        if (!accountType) {
+            errorDisplay.textContent = 'Select an account type.';
+            errorDisplay.style.display = 'block'; return;
+        }
+        if (!username || !email || !password) {
+            errorDisplay.textContent = 'Fill in username, email, and password.';
+            errorDisplay.style.display = 'block'; return;
+        }
+        if (password !== confirmPassword) {
+            errorDisplay.textContent = 'Passwords do not match.';
+            errorDisplay.style.display = 'block'; return;
+        }
+        submitButton.disabled = true;
+        submitButton.textContent = 'Creating account…';
+        try {
+            const response = await apiFetch('/api/auth/register/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken(),
+                },
+                body: JSON.stringify({ username, email, role: accountType, password1: password, password2: confirmPassword })
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                const errs = data.errors;
+                const msg = errs ? Object.values(errs).flat().join(' ') : 'Registration failed.';
+                errorDisplay.textContent = msg;
+                errorDisplay.style.display = 'block'; return;
+            }
+            if (data.is_staff) window.location.href = '/nomz-admin/';
+            else if (data.role === 'restaurant') window.location.href = '/restaurant-profile/';
+            else window.location.href = '/dashboard/';
+        } catch (error) {
+            errorDisplay.textContent = 'Network error. Please try again.';
+            errorDisplay.style.display = 'block';
+        } finally {
+            submitButton.disabled = false;
+            submitButton.textContent = 'Create Account';
+        }
+    });
+});
+</script>
+
+<style>
+.auth-page {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--paper);
+}
+.auth-header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 20px 6vw;
+    border-bottom: 2px solid var(--ink);
+}
+.auth-logo {
+    font-family: var(--font-serif);
+    font-size: 1.75rem;
+    font-weight: 900;
+    color: var(--ink);
+    text-decoration: none;
+    letter-spacing: -0.02em;
+    flex-shrink: 0;
+}
+.auth-header-rule { flex: 1; height: 1px; background: var(--rule); }
+.auth-header-label {
+    font-size: 10px;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    color: var(--mid);
+    flex-shrink: 0;
+}
+.auth-body {
+    flex: 1;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 60px 6vw;
+    position: relative;
+}
+.auth-back {
+    position: absolute;
+    top: 32px;
+    left: 6vw;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-family: var(--font-sans);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--mid);
+    transition: color 0.2s;
+    padding: 0;
+}
+.auth-back:hover { color: var(--ink); }
+.auth-card {
+    width: 100%;
+    border: 1px solid var(--rule);
+    padding: 40px;
+    background: var(--paper);
+}
+.auth-title {
+    font-family: var(--font-serif);
+    font-size: 2rem;
+    font-weight: 900;
+    color: var(--ink);
+    margin-bottom: 6px;
+}
+.auth-sub {
+    font-size: 12px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--mid);
+    margin-bottom: 28px;
+}
+.auth-error {
+    background: rgba(212,43,43,0.06);
+    color: var(--red);
+    border-left: 3px solid var(--red);
+    padding: 10px 14px;
+    font-size: 13px;
+    margin-bottom: 20px;
+}
+.auth-form { display: flex; flex-direction: column; gap: 20px; }
+.signup-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px 20px;
+}
+.auth-field { display: flex; flex-direction: column; gap: 6px; }
+.auth-field label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--mid);
+}
+.auth-field input,
+.auth-field select {
+    border: 1px solid var(--rule);
+    background: var(--paper);
+    padding: 12px 14px;
+    font-family: var(--font-sans);
+    font-size: 14px;
+    color: var(--ink);
+    width: 100%;
+    transition: border-color 0.2s;
+}
+.auth-field input:focus,
+.auth-field select:focus { outline: none; border-color: var(--ink); }
+.auth-footer-text {
+    margin-top: 24px;
+    font-size: 13px;
+    color: var(--mid);
+    text-align: center;
+}
+.auth-link { color: var(--red); border-bottom: 1px solid currentColor; }
+.auth-link:hover { opacity: 0.75; }
+@media (max-width: 600px) {
+    .signup-grid { grid-template-columns: 1fr; }
+    .auth-back { top: 16px; left: 5vw; }
+    .auth-card { padding: 28px 20px; }
+}
+</style>
+{% endblock %}

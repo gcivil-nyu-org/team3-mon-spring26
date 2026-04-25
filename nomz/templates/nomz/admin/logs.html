@@ -1,0 +1,209 @@
+{% extends 'nomz/base.html' %}
+{% block main_layout %}
+{% include 'nomz/components/premium_design.html' %}
+<style>
+    nav.navbar, body > footer, .nav-icons { display: none !important; }
+    .ad-container { max-width: 1100px; margin: 0 auto; padding: 2rem; position: relative; z-index: 10; }
+    
+    .ad-header { margin-bottom: 2.5rem; }
+    .ad-page-title { font-family: var(--font-sans); font-size: 28px; font-weight: 600; color: var(--red); margin: 0 0 0.5rem 0; }
+    .ad-page-subtitle { color: #8a7e75; font-size: 14px; margin: 0; }
+    
+    .ad-table-header { 
+        display: flex; align-items: center; gap: 1.5rem; padding: 0 1.25rem 1rem 1.25rem;
+        border-bottom: 1px solid rgba(212, 43, 43, 0.1); margin-bottom: 1rem;
+        font-size: 11px; font-weight: 700; color: #8a7e75; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+
+    .filter-section { margin-bottom: 2rem; }
+    .filter-label { font-size: 13px; color: #8a7e75; margin-bottom: 0.75rem; }
+    .filter-bar { display: flex; gap: 0.75rem; margin-bottom: 1.5rem; }
+    .filter-btn { padding: 8px 24px; border-radius: 12px; border: 1px solid rgba(212, 43, 43, 0.2); background: white; color: #8a7e75; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+    .filter-btn:hover { background: rgba(212, 43, 43, 0.05); }
+    .filter-btn.active { background: var(--red); color: white; border-color: var(--red); }
+    
+    .found-count { font-size: 13px; color: #8a7e75; margin-bottom: 2rem; }
+
+    .log-card { 
+        background: white; border-radius: 12px; padding: 0.75rem 1.25rem; margin-bottom: 0.5rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.02); display: flex; align-items: center; gap: 1.5rem;
+        transition: all 0.2s; border: 1px solid transparent;
+    }
+    .log-card:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+
+    .log-status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .dot-success { background: #10b981; }
+    .dot-failure { background: #ef4444; }
+
+    .log-col { display: flex; align-items: center; white-space: nowrap; flex-shrink: 0; }
+    .col-value { font-size: 14px; color: #333; font-weight: 500; }
+
+    .action-pill { padding: 2px 8px; border-radius: 4px; font-size: 9px; font-weight: 800; text-transform: uppercase; display: inline-block; }
+    .pill-success { background: #10b981; color: white; }
+    .pill-failure { background: #ef4444; color: white; }
+
+    /* Optimized widths */
+    .col-timestamp { width: 200px; }
+    .col-admin { width: 130px; }
+    .col-action { width: 90px; }
+    .col-target { width: 130px; }
+    .col-details { flex-grow: 1; overflow: hidden; text-overflow: ellipsis; max-width: 300px; }
+</style>
+
+{% include 'nomz/components/premium_nav.html' %}
+
+<div class="ad-container">
+    <div class="ad-header">
+        <h1 class="ad-page-title">Admin Logs</h1>
+        <p class="ad-page-subtitle">Audit trail of all administrative and security actions on the platform.</p>
+    </div>
+
+    <div class="filter-section">
+        <p class="filter-label">Filter by login result (from LoginLog)</p>
+        <div class="filter-bar">
+            <button class="filter-btn active" data-filter="all">All</button>
+            <button class="filter-btn" data-filter="Success">Success</button>
+            <button class="filter-btn" data-filter="Failure">Failure</button>
+            <button class="filter-btn" data-filter="Suspicious">Suspicious</button>
+        </div>
+        <p class="found-count" id="log-count">0 log entry/entries found</p>
+    </div>
+
+    <div class="ad-table-header">
+        <div style="width: 8px; flex-shrink: 0;"></div> <!-- Status dot spacer -->
+        <div class="col-timestamp">Timestamp</div>
+        <div class="col-admin">Admin</div>
+        <div class="col-action">Action</div>
+        <div class="col-target">Target IP</div>
+        <div class="col-details">Details</div>
+    </div>
+
+    <div id="logs-container">
+        <p style="text-align: center; color: #999; padding: 3rem;">Loading logs...</p>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentFilter = 'all';
+
+async function apiCall(path, options = {}) {
+    const getCookie = (name) => {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    };
+    const headers = {
+        'X-CSRFToken': getCookie('csrftoken'),
+        'Content-Type': 'application/json',
+        ...options.headers
+    };
+    return fetch(path, { ...options, headers });
+}
+
+async function load(){
+    const container = document.getElementById('logs-container');
+    const countText = document.getElementById('log-count');
+    
+    try {
+        const r = await apiCall('/api/admin/login-logs/');
+        if (!r.ok) throw new Error('Unauthorized');
+        
+        const d = await r.json();
+        const allLogs = d.results || [];
+        
+        let filtered = allLogs;
+        if (currentFilter === 'Suspicious') {
+            filtered = allLogs.filter(l => l.is_suspicious || l.is_user_suspicious);
+        } else if (currentFilter !== 'all') {
+            filtered = allLogs.filter(l => l.status === currentFilter);
+        }
+
+        countText.textContent = `${filtered.length} log entry/entries found`;
+
+        if (filtered.length === 0) {
+            container.innerHTML = `<div style="text-align: center; color: #999; padding: 3rem; background: white; border-radius: 16px;">No logs found for this filter.</div>`;
+            return;
+        }
+        
+        container.innerHTML = filtered.map(l => {
+            const date = new Date(l.timestamp);
+            const timeStr = date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
+            const dateStr = date.toLocaleDateString();
+            
+            const isSuccess = l.status === 'Success';
+            const dotClass = isSuccess ? 'dot-success' : 'dot-failure';
+            const pillClass = isSuccess ? 'pill-success' : 'pill-failure';
+            
+            let details = '—';
+            if (l.is_suspicious || l.is_user_suspicious) {
+                details = 'Suspicious attempt';
+                if (l.is_user_suspicious) details += ' - User flagged suspicious';
+            }
+
+            return `
+                <div class="log-card">
+                    <div class="log-status-dot ${dotClass}"></div>
+                    
+                    <div class="log-col col-timestamp">
+                        <span class="col-value">${dateStr}, ${timeStr}</span>
+                    </div>
+
+                    <div class="log-col col-admin">
+                        <span class="col-value">${l.username}</span>
+                    </div>
+
+                    <div class="log-col col-action">
+                        <div class="action-pill ${pillClass}">${l.status}</div>
+                    </div>
+
+                    <div class="log-col col-target">
+                        <span class="col-value">${l.ip_address || 'Unknown'}</span>
+                    </div>
+
+                    <div class="log-col col-details">
+                        <span class="col-value">${details}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (err) {
+        container.innerHTML = `<div style="text-align: center; color: #dc2626; padding: 3rem;">Error: ${err.message}</div>`;
+    }
+}
+
+document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.onclick = () => {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentFilter = btn.dataset.filter;
+        load();
+    };
+});
+
+// Periodic refresh
+// Handle URL params
+const params = new URLSearchParams(window.location.search);
+if (params.get('filter') === 'suspicious') {
+    currentFilter = 'Suspicious';
+    document.querySelectorAll('.filter-btn').forEach(b => {
+        b.classList.remove('active');
+        if (b.dataset.filter === 'Suspicious') b.classList.add('active');
+    });
+}
+
+load();
+setInterval(load, 10000);
+</script>
+{% endblock %}

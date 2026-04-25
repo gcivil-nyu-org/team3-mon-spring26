@@ -1,0 +1,2287 @@
+{% extends 'nomz/base.html' %}
+{% block title %}Restaurant Dashboard – nomz{% endblock %}
+{% block main_layout %}
+{% include 'nomz/components/premium_design.html' %}
+<style>
+    /* ── Hide the base template navbar & footer ──────────────────────── */
+    nav.navbar {
+        display: none !important;
+    }
+
+    body>footer {
+        display: none !important;
+    }
+
+    @keyframes float {
+        0%,
+        100% {
+            transform: translate(0, 0) scale(1);
+        }
+
+        50% {
+            transform: translate(-20px, 20px) scale(1.05);
+        }
+    }
+
+    .rest-page-wrapper {
+        min-height: 100vh;
+        background: var(--premium-bg);
+        font-family: var(--font-sans);
+        position: relative;
+        overflow-x: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* Floating Gradient Orbs */
+    .gradient-orb {
+        position: fixed;
+        border-radius: 50%;
+        filter: blur(80px);
+        opacity: 0.3;
+        pointer-events: none;
+        z-index: 0;
+        animation: float 20s infinite ease-in-out;
+    }
+
+    .orb-1 {
+        width: 500px;
+        height: 500px;
+        background: radial-gradient(circle, rgba(212, 43, 43, 0.3) 0%, transparent 70%);
+        top: -100px;
+        right: -100px;
+    }
+
+    .orb-2 {
+        width: 400px;
+        height: 400px;
+        background: radial-gradient(circle, rgba(255, 183, 77, 0.2) 0%, transparent 70%);
+        bottom: 100px;
+        left: -100px;
+        animation-delay: -5s;
+    }
+
+
+    /* ── Page Container ─────────────────────────────────────────────── */
+    .rest-container {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 1.25rem 2rem 2rem;
+        position: relative;
+        z-index: 10;
+        width: 100%;
+        flex: 1 0 auto;
+    }
+
+    /* ── Glass card ─────────────────────────────────────────────────── */
+    .glass-card {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(212, 43, 43, 0.15);
+        border-radius: 20px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 16px rgba(212, 43, 43, 0.05);
+        margin-bottom: 1.25rem;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .glass-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(212, 43, 43, 0.1);
+    }
+
+    /* ── Pending-Approval Alert ─────────────────────────────────────── */
+    .rest-alert {
+        display: none;
+        background: rgba(254, 226, 226, 0.6);
+        backdrop-filter: blur(12px);
+        border: 1.5px solid #FECACA;
+        border-radius: 16px;
+        padding: 1.25rem 1.5rem;
+        margin-bottom: 1.25rem;
+        animation: fadeSlideDown 0.35s ease;
+    }
+
+    .rest-alert.visible {
+        display: block;
+    }
+
+    .rest-alert-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.45rem;
+    }
+
+    .rest-alert-title {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--red);
+    }
+
+    .rest-alert-body {
+        font-size: 13.5px;
+        color: #7b6b6b;
+        line-height: 1.55;
+        margin-bottom: 0.9rem;
+    }
+
+    .rest-btn-primary {
+        display: inline-block;
+        padding: 8px 20px;
+        background: var(--red);
+        color: #fff;
+        border-radius: 22px;
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 600;
+        border: none;
+        cursor: pointer;
+        transition: background 0.2s, transform 0.15s;
+        font-family: var(--font-sans);
+    }
+
+    .rest-btn-primary:hover {
+        background: #b82020;
+        transform: translateY(-1px);
+        color: #fff;
+    }
+
+    /* ── Photos Modal specific styles ────────────────────────────── */
+    .modal-photo-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 16px;
+        margin-top: 20px;
+        max-height: 400px;
+        overflow-y: auto;
+        padding: 4px;
+    }
+
+    .modal-photo-grid::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .modal-photo-grid::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.05);
+        border-radius: 10px;
+    }
+
+    .modal-photo-grid::-webkit-scrollbar-thumb {
+        background: rgba(212, 43, 43, 0.2);
+        border-radius: 10px;
+    }
+
+    .modal-photo-card {
+        position: relative;
+        border-radius: 12px;
+        overflow: hidden;
+        aspect-ratio: 1;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .modal-photo-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 24px rgba(212, 43, 43, 0.15);
+    }
+
+    .modal-photo-card img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .modal-btn-delete {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        background: rgba(255, 255, 255, 0.9);
+        color: var(--red);
+        border: none;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 16px;
+        backdrop-filter: blur(4px);
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        opacity: 0;
+        transform: scale(0.8);
+    }
+
+    .modal-photo-card:hover .modal-btn-delete {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    .modal-btn-delete:hover {
+        background: var(--red);
+        color: white;
+        transform: scale(1.1) !important;
+    }
+
+    .modal-empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        background: rgba(212, 43, 43, 0.02);
+        border-radius: 20px;
+        border: 2px dashed rgba(212, 43, 43, 0.15);
+        grid-column: 1 / -1;
+    }
+
+    .rest-btn-outline {
+        display: inline-block;
+        padding: 8px 20px;
+        background: transparent;
+        color: var(--red);
+        border: 1.5px solid var(--red);
+        border-radius: 22px;
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-family: var(--font-sans);
+    }
+
+    .rest-btn-outline:hover {
+        background: rgba(212, 43, 43, 0.08);
+        color: #b82020;
+    }
+
+    /* ── Restaurant Name ───────────────────────────────────────────── */
+    .rest-name {
+        font-size: 23px;
+        font-weight: 700;
+        color: var(--red);
+        margin-bottom: 0.3rem;
+    }
+
+    .rest-subtitle {
+        font-size: 14px;
+        color: #888;
+        margin-bottom: 0.25rem;
+    }
+
+    .rest-divider {
+        height: 1px;
+        background: rgba(0, 0, 0, 0.07);
+        margin: 1rem 0;
+    }
+
+    /* ── Stats Grid ─────────────────────────────────────────────────── */
+    .rest-stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.9rem;
+    }
+
+    .rest-stat-box {
+        background: rgba(255, 255, 255, 0.5);
+        border: 1px solid rgba(0, 0, 0, 0.07);
+        border-radius: 12px;
+        padding: 1rem 0.75rem;
+        text-align: center;
+    }
+
+    .rest-stat-value {
+        font-size: 22px;
+        font-weight: 700;
+        color: #222;
+        display: block;
+    }
+
+    .rest-stat-dash {
+        color: var(--red);
+        font-weight: 700;
+    }
+
+    .rest-stat-label {
+        font-size: 11.5px;
+        color: #999;
+        margin-top: 0.3rem;
+        display: block;
+    }
+
+    /* ── Tabs ───────────────────────────────────────────────────────── */
+    .rest-tabs {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1.25rem;
+        flex-wrap: wrap;
+    }
+
+    .rest-tab {
+        padding: 8px 20px;
+        border-radius: 22px;
+        border: 1.5px solid rgba(212, 43, 43, 0.25);
+        background: rgba(255, 255, 255, 0.6);
+        color: #666;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-family: var(--font-sans);
+    }
+
+    .rest-tab:hover {
+        border-color: var(--red);
+        color: var(--red);
+    }
+
+    .rest-tab.active {
+        background: var(--red);
+        border-color: var(--red);
+        color: #fff;
+        font-weight: 600;
+    }
+
+    /* ── Tab Panels ─────────────────────────────────────────────────── */
+    .rest-panel {
+        display: none;
+    }
+
+    .rest-panel.active {
+        display: block;
+        animation: fadeIn 0.25s ease;
+    }
+
+    /* ── Action Cards ───────────────────────────────────────────────── */
+    .rest-actions-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .rest-action-card {
+        background: rgba(255, 255, 255, 0.6);
+        backdrop-filter: blur(12px);
+        border: 1.5px solid rgba(212, 43, 43, 0.15);
+        border-radius: 14px;
+        padding: 1.35rem 1rem;
+        text-align: center;
+        cursor: pointer;
+        transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+        position: relative;
+        text-decoration: none;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.45rem;
+    }
+
+    .rest-action-card:hover {
+        border-color: var(--red);
+        box-shadow: 0 6px 20px rgba(212, 43, 43, 0.13);
+        transform: translateY(-2px);
+    }
+
+    .rest-action-icon {
+        font-size: 28px;
+        display: block;
+        line-height: 1;
+    }
+
+    .rest-action-label {
+        font-size: 13.5px;
+        font-weight: 500;
+        color: #333;
+    }
+
+    /* Tooltip */
+    .rest-tooltip {
+        position: absolute;
+        bottom: calc(100% + 8px);
+        left: 50%;
+        transform: translateX(-50%);
+        background: #1a1a1a;
+        color: #fff;
+        font-size: 11px;
+        font-weight: 500;
+        padding: 4px 10px;
+        border-radius: 6px;
+        white-space: nowrap;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s;
+        z-index: 20;
+    }
+
+    .rest-tooltip::after {
+        content: '';
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        border: 5px solid transparent;
+        border-top-color: #1a1a1a;
+    }
+
+    .rest-action-card:hover .rest-tooltip {
+        opacity: 1;
+    }
+
+    /* ── Section card title ─────────────────────────────────────────── */
+    .rest-section-title {
+        font-size: 17px;
+        font-weight: 700;
+        color: #1a1a1a;
+        margin-bottom: 1.25rem;
+    }
+
+    /* ── Account Status ─────────────────────────────────────────────── */
+    .rest-info-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem 2rem;
+    }
+
+    .rest-info-label {
+        font-size: 13px;
+        color: #999;
+        margin-bottom: 0.4rem;
+    }
+
+    .rest-info-value {
+        font-size: 15px;
+        font-weight: 500;
+        color: #222;
+    }
+
+    .rest-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 5px 13px;
+        border-radius: 22px;
+        font-size: 12.5px;
+        font-weight: 600;
+    }
+
+    .rest-badge.pending {
+        background: #FEF3C7;
+        color: #92400E;
+    }
+
+    .rest-badge.approved {
+        background: #D1FAE5;
+        color: #065F46;
+    }
+
+    .rest-badge.rejected {
+        background: #FEE2E2;
+        color: #991B1B;
+    }
+
+    .rest-completion-pct {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--red);
+    }
+
+    /* ── Recent Activity ────────────────────────────────────────────── */
+    .rest-activity-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        padding: 0.7rem 0;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    .rest-activity-item:last-of-type {
+        border-bottom: none;
+    }
+
+    .rest-activity-icon {
+        font-size: 16px;
+        flex-shrink: 0;
+        margin-top: 2px;
+    }
+
+    .rest-activity-text {
+        font-size: 14px;
+        font-weight: 500;
+        color: #333;
+    }
+
+    .rest-activity-date {
+        font-size: 12px;
+        color: #aaa;
+        margin-top: 2px;
+    }
+
+    .rest-activity-empty {
+        font-size: 13px;
+        color: #bbb;
+        text-align: center;
+        padding: 0.75rem 0;
+    }
+
+    /* ── Performance: Top two-col ───────────────────────────────────── */
+    .rest-perf-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .rest-perf-big-score {
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--red);
+        margin-bottom: 1rem;
+    }
+
+    .rest-perf-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 13.5px;
+        color: #666;
+        padding: 0.4rem 0;
+        border-top: 1px solid rgba(0, 0, 0, 0.06);
+    }
+
+    .rest-perf-num {
+        font-weight: 600;
+        color: #333;
+    }
+
+    /* ── Composite Factor Bars ──────────────────────────────────────── */
+    .rest-factor {
+        margin-bottom: 1.35rem;
+    }
+
+    .rest-factor:last-child {
+        margin-bottom: 0;
+    }
+
+    .rest-factor-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.35rem;
+    }
+
+    .rest-factor-label {
+        font-size: 14px;
+        font-weight: 600;
+        color: #222;
+    }
+
+    .rest-factor-score {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--red);
+    }
+
+    .rest-bar-bg {
+        height: 8px;
+        background: rgba(212, 43, 43, 0.1);
+        border-radius: 99px;
+        overflow: hidden;
+        margin-bottom: 0.35rem;
+    }
+
+    .rest-bar-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--red), #b82020);
+        border-radius: 99px;
+        width: 0%;
+        transition: width 1.1s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .rest-factor-desc {
+        font-size: 12px;
+        color: #aaa;
+        line-height: 1.45;
+    }
+
+    /* ── Bottom two-col ──────────────────────────────────────────────── */
+    .rest-bottom-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin-top: 1.25rem;
+    }
+
+    /* ── Empty state ─────────────────────────────────────────────────── */
+    .rest-empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 1.5rem 1rem;
+        color: #ccc;
+    }
+
+    .rest-empty span {
+        font-size: 30px;
+    }
+
+    .rest-empty p {
+        font-size: 13px;
+        text-align: center;
+        color: #bbb;
+        margin: 0;
+    }
+
+    /* ── Review cards ────────────────────────────────────────────────── */
+    .rest-review-card {
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        border-radius: 14px;
+        padding: 1.1rem;
+        margin-bottom: 0.9rem;
+    }
+
+    .rest-review-card:last-child {
+        margin-bottom: 0;
+    }
+
+    .rest-review-header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 0.4rem;
+    }
+
+    .rest-review-user {
+        font-weight: 600;
+        color: #333;
+        font-size: 14px;
+    }
+
+    .rest-review-date {
+        font-size: 12px;
+        color: #bbb;
+    }
+
+    .rest-review-stars {
+        color: #FBBF24;
+        font-size: 14px;
+        margin-bottom: 0.4rem;
+    }
+
+    .rest-review-text {
+        font-size: 13.5px;
+        color: #666;
+        line-height: 1.5;
+    }
+
+    /* ── Footer ──────────────────────────────────────────────────────── */
+    .rest-footer {
+        text-align: center;
+        font-size: 13px;
+        color: #ccc;
+        padding: 2rem 0 0.5rem;
+    }
+
+    /* ── Loading spinner ─────────────────────────────────────────────── */
+    .rest-loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 4rem 1rem;
+        font-size: 14px;
+        color: var(--red);
+    }
+
+    @keyframes rest-spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    .rest-spin {
+        animation: rest-spin 0.9s linear infinite;
+    }
+
+    /* ── Toast ────────────────────────────────────────────────────────── */
+    .rest-toast {
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        background: var(--red);
+        color: #fff;
+        padding: 0.85rem 1.5rem;
+        border-radius: 14px;
+        font-weight: 600;
+        font-size: 14px;
+        box-shadow: 0 8px 24px rgba(212, 43, 43, 0.4);
+        transform: translateY(120px);
+        opacity: 0;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        z-index: 9999;
+    }
+
+    .rest-toast.show {
+        transform: translateY(0);
+        opacity: 1;
+    }
+
+    /* ── Keyframes ────────────────────────────────────────────────────── */
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(6px);
+        }
+
+        to {
+            opacity: 1;
+            transform: none;
+        }
+    }
+
+    @keyframes fadeSlideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-8px);
+        }
+
+        to {
+            opacity: 1;
+            transform: none;
+        }
+    }
+
+    /* ── Responsive ───────────────────────────────────────────────────── */
+    @media (max-width: 680px) {
+        .rest-stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .rest-actions-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .rest-perf-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .rest-bottom-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .rest-info-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .rest-container {
+            padding: 1rem;
+        }
+
+        .search-nav {
+            padding: 0.75rem 1rem;
+        }
+    }
+
+    /* ── Inline Edit Form ───────────────────────────────────────────────── */
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+        margin-top: 1rem;
+    }
+
+    .form-group-full {
+        grid-column: 1 / -1;
+    }
+
+    .form-label {
+        display: block;
+        font-size: 13px;
+        font-weight: 500;
+        color: #999;
+        margin-bottom: 0.6rem;
+    }
+
+    .form-input,
+    .form-select {
+        width: 100%;
+        box-sizing: border-box;
+        font-family: var(--font-sans);
+        background: #fff;
+        border: 1px solid #f2cfd4;
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        font-size: 14.5px;
+        color: #333;
+        transition: all 0.2s ease;
+    }
+
+    .form-input:focus,
+    .form-select:focus {
+        outline: none;
+        border-color: var(--red);
+        box-shadow: 0 0 0 3px rgba(212, 43, 43, 0.05);
+    }
+
+    .form-input::placeholder {
+        color: #ccc;
+    }
+
+    /* Fix for time inputs on macOS/Safari becoming unclickable with high padding */
+    input[type="time"].form-input {
+        padding: 0.8rem 1rem;
+        min-height: 48px;
+    }
+
+    #bd-edit-mode .glass-card {
+        background: #fff;
+        /* Mockup looks solid white or very near */
+        border: 1px solid rgba(0, 0, 0, 0.03);
+    }
+</style>
+
+<div class="rest-page-wrapper">
+
+    <!-- ── Custom Navigation (same as diner profile) ────────────────── -->
+    {% include 'nomz/components/premium_nav.html' %}
+
+    <!-- ── Page Container ───────────────────────────────────────────── -->
+    <div class="rest-container">
+
+        <!-- Loading State -->
+        <div id="rest-loading" class="rest-loading">
+            <svg class="rest-spin" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--red)"
+                stroke-width="2.5">
+                <path
+                    d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+            </svg>
+            Loading dashboard…
+        </div>
+
+        <!-- Main dashboard (shown after load) -->
+        <div id="rest-main" style="display:none;">
+
+            <!-- ── Pending-Approval Alert ──────────────────────────── -->
+            <div id="rest-pending-alert" class="rest-alert">
+                <div class="rest-alert-header">
+                    <span>⏳</span>
+                    <span class="rest-alert-title">Account Pending Approval</span>
+                </div>
+                <p class="rest-alert-body">
+                    Your restaurant business account is undergoing security review.
+                    Most accounts are verified within 24-48 hours.
+                </p>
+                <a href="/restaurant/claim/" class="rest-btn-primary" id="btn-claim-listing">Claim an existing
+                    listing</a>
+            </div>
+
+            <!-- ── Restaurant Info Card ────────────────────────────── -->
+            <div class="glass-card">
+                <h1 class="rest-name" id="rest-name">Your Restaurant</h1>
+                <p class="rest-subtitle" id="rest-subtitle">&nbsp;</p>
+                <div class="rest-divider"></div>
+                <div class="rest-stats-grid">
+                    <div class="rest-stat-box">
+                        <span class="rest-stat-value" id="stat-composite"><span class="rest-stat-dash">—</span></span>
+                        <span class="rest-stat-label">Composite Score</span>
+                    </div>
+                    <div class="rest-stat-box">
+                        <span class="rest-stat-value" id="stat-inspection"><span class="rest-stat-dash">—</span></span>
+                        <span class="rest-stat-label">Inspection rating</span>
+                    </div>
+                    <div class="rest-stat-box">
+                        <span class="rest-stat-value" id="stat-citywide"><span class="rest-stat-dash">—</span></span>
+                        <span class="rest-stat-label" id="stat-citywide-lbl">Citywide rank</span>
+                    </div>
+                    <div class="rest-stat-box">
+                        <span class="rest-stat-value" id="stat-reviews" style="color:var(--red);">0</span>
+                        <span class="rest-stat-label">Nomz reviews</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Tabs ────────────────────────────────────────────── -->
+            <div class="rest-tabs" role="tablist">
+                <button id="tab-btn-overview" class="rest-tab active" role="tab"
+                    onclick="switchTab('overview',this)">Overview</button>
+                <button id="tab-btn-performance" class="rest-tab" role="tab"
+                    onclick="switchTab('performance',this)">Performance Metrics</button>
+                <button id="tab-btn-details" class="rest-tab" role="tab" onclick="switchTab('details',this)">Business
+                    Details</button>
+                <button id="tab-btn-reviews" class="rest-tab" role="tab"
+                    onclick="switchTab('reviews',this)">Reviews</button>
+            </div>
+
+            <!-- ════════════════ OVERVIEW TAB ═══════════════════════ -->
+            <div id="tab-overview" class="rest-panel active" role="tabpanel">
+
+                <!-- Quick-action cards -->
+                <style>
+                    .rest-action-icon svg { width: 32px; height: 32px; color: var(--red); }
+                </style>
+                <div class="rest-actions-grid">
+                    <a class="rest-action-card" href="javascript:void(0)" onclick="openPhotosModal()" id="btn-manage-photos">
+                        <span class="rest-action-icon">
+                            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        </span>
+                        <span class="rest-action-label">Manage Photos</span>
+                    </a>
+                    <a class="rest-action-card" href="javascript:void(0)" onclick="openAvailModal()" id="btn-availability">
+                        <span class="rest-action-icon">
+                            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        </span>
+                        <span class="rest-action-label">Availability</span>
+                    </a>
+                    <a class="rest-action-card" href="javascript:void(0)" onclick="openSettingsModal()" id="btn-settings">
+                        <span class="rest-action-icon">
+                            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        </span>
+                        <span class="rest-action-label">Settings</span>
+                        <span class="rest-tooltip">Messaging settings</span>
+                    </a>
+                    <a class="rest-action-card" href="javascript:void(0)" onclick="openActivationModal()" id="btn-activation">
+                        <span class="rest-action-icon">
+                            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        </span>
+                        <span class="rest-action-label">Activation</span>
+                    </a>
+                </div>
+
+                <!-- Account Status -->
+                <div class="glass-card">
+                    <h2 class="rest-section-title">Account Status</h2>
+                    <div class="rest-info-grid">
+                        <div>
+                            <p class="rest-info-label">Verification Status</p>
+                            <span id="rest-verify-badge" class="rest-badge pending">Pending approval</span>
+                        </div>
+                        <div>
+                            <p class="rest-info-label">Profile Completion</p>
+                            <span id="rest-completion" class="rest-completion-pct">—% Complete</span>
+                        </div>
+                        <div>
+                            <p class="rest-info-label">Profile Visibility</p>
+                            <span id="rest-active-badge" class="rest-badge approved">Active</span>
+                        </div>
+                        <div>
+                            <p class="rest-info-label">Current Availability</p>
+                            <span id="rest-avail-badge" class="rest-badge approved">Available</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Activity -->
+                <div class="glass-card">
+                    <h2 class="rest-section-title">Recent Activity</h2>
+                    <div id="rest-activity"></div>
+                </div>
+
+            </div><!-- /overview -->
+
+            <!-- ════════════════ PERFORMANCE METRICS TAB ════════════ -->
+            <div id="tab-performance" class="rest-panel" role="tabpanel">
+
+                <div id="perf-loading" class="rest-loading" style="display:none;">
+                    <svg class="rest-spin" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--red)"
+                        stroke-width="2.5">
+                        <path
+                            d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                    </svg>
+                    Loading performance data…
+                </div>
+
+                <div id="perf-content" style="display:none;">
+
+                    <!-- Top row -->
+                    <div class="rest-perf-grid">
+                        <div class="glass-card" style="margin-bottom:0;">
+                            <h2 class="rest-section-title">Composite Score</h2>
+                            <p class="rest-perf-big-score">
+                                <span id="perf-score">—</span><span
+                                    style="color:#999;font-size:18px;font-weight:400;">/100</span>
+                            </p>
+                            <div class="rest-perf-row">
+                                <span>Inspection-based rating:</span>
+                                <span class="rest-perf-num" id="perf-insp">—</span>
+                            </div>
+                            <div class="rest-perf-row">
+                                <span>Nomz reviews:</span>
+                                <span class="rest-perf-num" id="perf-rc">0</span>
+                            </div>
+                        </div>
+                        <div class="glass-card" style="margin-bottom:0;">
+                            <h2 class="rest-section-title">Citywide comparison</h2>
+                            <p style="font-size:13px;color:#888;line-height:1.55;margin-bottom:1rem;">
+                                Among active listings visible in search (same pool as map/search APIs).
+                            </p>
+                            <div style="height:1px;background:rgba(212, 43, 43,0.25);margin-bottom:1rem;"></div>
+                            <div class="rest-perf-row">
+                                <span>Approx. percentile (by score rank):</span>
+                                <span class="rest-perf-num" id="perf-pct">—</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Composite Factor Breakdown -->
+                    <div class="glass-card">
+                        <h2 class="rest-section-title">Composite Factor Breakdown</h2>
+                        <div id="perf-breakdown">
+                            <p style="font-size:13px;color:#bbb;">
+                                Score breakdown will appear after the first composite-score calculation.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Bottom row -->
+                    <div class="rest-bottom-grid">
+                        <div class="glass-card" style="margin-bottom:0;">
+                            <h2 class="rest-section-title" style="font-size:15px;">Review Parameter Breakdown</h2>
+                            <div id="perf-rev-params">
+                                <div class="rest-empty"><span>📊</span>
+                                    <p>No published reviews yet</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="glass-card" style="margin-bottom:0;">
+                            <h2 class="rest-section-title" style="font-size:15px;">Historical Trend</h2>
+                            <div id="perf-history">
+                                <div class="rest-empty"><span>📈</span>
+                                    <p>No historical data available</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div><!-- /perf-content -->
+            </div><!-- /performance -->
+
+            <!-- ════════════════ BUSINESS DETAILS TAB ═══════════════ -->
+            <div id="tab-details" class="rest-panel" role="tabpanel">
+
+                <div id="bd-view-mode">
+                    <!-- Business Information section -->
+                    <div class="glass-card">
+                        <div
+                            style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem;margin-bottom:1.25rem;">
+                            <h2 class="rest-section-title" style="margin-bottom:0;">Business Information</h2>
+                            <div style="display:flex;gap:0.6rem;flex-wrap:wrap;">
+                                <button type="button" class="rest-btn-primary" onclick="toggleInlineEdit(true)"
+                                    id="btn-edit-info">Edit Information</button>
+                                <a href="/restaurant/edit/" class="rest-btn-outline" id="btn-full-form">Full profile
+                                    form</a>
+                            </div>
+                        </div>
+                        <div class="rest-info-grid">
+                            <div>
+                                <p class="rest-info-label">Business Name</p>
+                                <p class="rest-info-value" id="bd-name">—</p>
+                            </div>
+                            <div>
+                                <p class="rest-info-label">Username</p>
+                                <p class="rest-info-value" id="bd-username">—</p>
+                            </div>
+                            <div>
+                                <p class="rest-info-label">Email</p>
+                                <p class="rest-info-value" id="bd-email"></p>
+                            </div>
+                            <div>
+                                <p class="rest-info-label">Phone</p>
+                                <p class="rest-info-value" id="bd-phone">Not provided</p>
+                            </div>
+                            <div>
+                                <p class="rest-info-label">Address</p>
+                                <p class="rest-info-value" id="bd-address">Not provided</p>
+                            </div>
+                            <div>
+                                <p class="rest-info-label">Member Since</p>
+                                <p class="rest-info-value" id="bd-member-since">—</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Restaurant Details section -->
+                    <div class="glass-card">
+                        <h2 class="rest-section-title">Restaurant Details</h2>
+                        <div class="rest-info-grid">
+                            <div>
+                                <p class="rest-info-label">Cuisine Type</p>
+                                <p class="rest-info-value" id="bd-cuisine">—</p>
+                            </div>
+                            <div>
+                                <p class="rest-info-label">Price Range</p>
+                                <p class="rest-info-value" id="bd-price">—</p>
+                            </div>
+                            <div>
+                                <p class="rest-info-label">Operating Hours</p>
+                                <p class="rest-info-value" id="bd-hours">—</p>
+                            </div>
+                            <div>
+                                <p class="rest-info-label">Messaging Hours</p>
+                                <p class="rest-info-value" id="bd-msg-hours">Not set (always available)</p>
+                            </div>
+                            <div>
+                                <p class="rest-info-label">Account Status</p>
+                                <span id="bd-acct-badge" class="rest-badge pending">Pending approval</span>
+                            </div>
+                            <div>
+                                <p class="rest-info-label">Account Type</p>
+                                <p class="rest-info-value">Restaurant</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Inline Edit Form -->
+                <form id="bd-edit-mode" style="display:none;" onsubmit="saveInlineProfile(event)">
+                    <!-- Business Information Card -->
+                    <div class="glass-card">
+                        <h2 class="rest-section-title" style="margin-top:0;">Business Information</h2>
+                        <div class="form-grid">
+                            <div>
+                                <label class="form-label">Business Name</label>
+                                <input type="text" id="inp-name" class="form-input" required
+                                    placeholder="Restaurant Name" />
+                            </div>
+                            <div>
+                                <label class="form-label">Username</label>
+                                <p id="txt-edit-username"
+                                    style="font-size:14.5px; color:#333; margin:0; padding: 1rem 0;">—</p>
+                            </div>
+                            <div>
+                                <label class="form-label">Email</label>
+                                <input type="email" id="inp-email" class="form-input" placeholder="Email Address" />
+                                <div id="err-email"
+                                    style="font-size:12px; color:var(--red); margin-top:4px; display:none;">Please include
+                                    an '@' in the email address.</div>
+                            </div>
+                            <div>
+                                <label class="form-label">Phone</label>
+                                <input type="text" id="inp-phone" class="form-input" placeholder="Enter phone number" />
+                                <div id="err-phone"
+                                    style="font-size:12px; color:var(--red); margin-top:4px; display:none;">Alphabets are
+                                    not allowed in the phone number.</div>
+                            </div>
+                            <div class="form-group-full">
+                                <label class="form-label">Address</label>
+                                <input type="text" id="inp-address" class="form-input"
+                                    placeholder="Enter business address" />
+                            </div>
+                            <div class="form-group-full">
+                                <label class="form-label">Member Since</label>
+                                <p id="txt-edit-member-since"
+                                    style="font-size:14.5px; color:#333; margin:0; padding: 0.5rem 0;">—</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Restaurant Details Card -->
+                    <div class="glass-card">
+                        <h2 class="rest-section-title" style="margin-top:0;">Restaurant Details</h2>
+                        <div class="form-grid">
+                            <div>
+                                <label class="form-label">Cuisine Type</label>
+                                <select id="inp-cuisine" class="form-select" required></select>
+                            </div>
+                            <div>
+                                <label class="form-label">Price Range</label>
+                                <select id="inp-price" class="form-select" required></select>
+                            </div>
+                            <div>
+                                <label class="form-label" style="margin-bottom: 1.25rem;">Operating Hours</label>
+                                <div style="display:flex; align-items:center; gap:0.75rem;">
+                                    <div style="flex:1; position:relative;">
+                                        <input type="time" id="inp-open" class="form-input" />
+                                    </div>
+                                    <span style="font-size:13px; color:#999; font-weight: 500;">to</span>
+                                    <div style="flex:1; position:relative;">
+                                        <input type="time" id="inp-close" class="form-input" />
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="form-label">Messaging Hours</label>
+                                <p id="txt-edit-msg-hours"
+                                    style="font-size:14.5px; font-weight:500; color:#333; margin: 0;">Not set (always
+                                    available)</p>
+                                <p style="font-size:11.5px; color:#999; margin-top:4px;">Edit response hours under
+                                    Overview ➔ Settings (same fields as the Django communication page).</p>
+                            </div>
+                            <div>
+                                <label class="form-label">Account Status</label>
+                                <div style="margin-top: 0.25rem;">
+                                    <span id="bd-edit-acct-badge" class="rest-badge approved"
+                                        style="padding: 6px 14px; font-size: 12px; font-weight: 600;">Approved &
+                                        Active</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="form-label">Account Type</label>
+                                <p style="font-size:14.5px; font-weight:500; margin:0; color:#333;">Restaurant</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div id="inline-error-msg"
+                            style="font-size:13px; color:var(--red); opacity:0; transition:opacity 0.2s;">Please correct
+                            the errors below.</div>
+                        <div class="rest-actions" style="margin-top:0; display:flex; gap: 0.75rem;">
+                            <button type="button" class="rest-btn-outline"
+                                style="background:#fff; border: 1px solid #f2cfd4; color: var(--red);"
+                                onclick="toggleInlineEdit(false)">Cancel</button>
+                            <button type="submit" class="rest-btn-primary" id="btn-save-inline"
+                                style="border: none; background: var(--red); box-shadow: 0 4px 12px rgba(212, 43, 43, 0.2);">Save
+                                Changes</button>
+                        </div>
+                    </div>
+                </form>
+            </div><!-- /details -->
+
+            <!-- ════════════════ REVIEWS TAB ════════════════════════ -->
+            <div id="tab-reviews" class="rest-panel" role="tabpanel">
+                <div class="glass-card">
+                    <h2 class="rest-section-title">Customer Reviews</h2>
+                    <div id="rest-reviews-list">
+                        <p style="text-align:center;color:#999;font-size:14px;padding:1rem 0;">No reviews yet.</p>
+                    </div>
+                </div>
+            </div><!-- /reviews -->
+
+        </div><!-- /#rest-main -->
+
+    </div><!-- /.rest-container -->
+    <footer style="border-top:2px solid var(--ink);padding:20px 6vw;display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-family:var(--font-serif);font-style:italic;font-size:13px;color:var(--tan);">Good food, always.</span>
+        <span style="font-size:10px;letter-spacing:0.3em;text-transform:uppercase;color:var(--mid);">nomz</span>
+    </footer>
+</div><!-- /.rest-page-wrapper -->
+
+<!-- Toast notification -->
+<div id="rest-toast" class="rest-toast" role="status" aria-live="polite"></div>
+
+<script>
+    // ─────────────────────────────────────────────────────────────────────────────
+    //  State
+    // ─────────────────────────────────────────────────────────────────────────────
+    let _profileData = null;
+    let _perfLoaded = false;
+    let _reviewsLoaded = false;
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    //  Bootstrap
+    // ─────────────────────────────────────────────────────────────────────────────
+    async function init() {
+        try {
+            const resp = await apiFetch('/api/restaurant/profile/');
+            if (!resp.ok) throw new Error('HTTP ' + resp.status);
+            const data = await resp.json();
+            _profileData = data;
+
+            // Reset lazy-load flags so tabs reload fresh data after saves
+            _perfLoaded = false;
+            _reviewsLoaded = false;
+
+            renderDashboard(data);
+            document.getElementById('rest-loading').style.display = 'none';
+            document.getElementById('rest-main').style.display = 'block';
+
+            // Auto-open photos modal if triggered via redirect
+            if (typeof getQueryParam === 'function' && getQueryParam('photos') === '1') {
+                openPhotosModal();
+                if (typeof removeQueryParam === 'function') removeQueryParam('photos');
+            }
+        } catch (err) {
+            console.error('[restaurant-dashboard] init error:', err);
+            document.getElementById('rest-loading').innerHTML =
+                '<span style="color:#dc2626;font-size:14px;">Failed to load dashboard. Please refresh the page.</span>';
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    //  Render Overview
+    // ─────────────────────────────────────────────────────────────────────────────
+    function renderDashboard(data) {
+        const r = data.restaurant;
+        const acct = data.account_status || {};
+
+        // ── Name & subtitle ──────────────────────────────────────────────────
+        document.getElementById('rest-name').textContent = r.name || 'Your Restaurant';
+
+        const cuisineLabel = r.cuisine_type ? fmtCuisineLabel(r.cuisine_type, data.cuisine_choices) : '';
+        const priceLabel = r.price_range ? fmtPriceLabel(r.price_range, data.price_choices) : '';
+        const hoursLabel = (r.hours_open && r.hours_close) ? `${r.hours_open} – ${r.hours_close}` : '';
+        const subtitleParts = [cuisineLabel, priceLabel, hoursLabel].filter(Boolean);
+        document.getElementById('rest-subtitle').textContent = subtitleParts.join(' · ') || 'Restaurant';
+
+        // ── Stats ────────────────────────────────────────────────────────────
+        const cs = r.composite_score;
+        const ir = r.inspection_rating;
+        document.getElementById('stat-composite').innerHTML =
+            cs != null ? `<span style="color:#222;">${cs.toFixed(1)}</span>` : '<span class="rest-stat-dash">—</span>';
+        document.getElementById('stat-inspection').innerHTML =
+            ir != null ? `<span style="color:#222;">${ir.toFixed(1)}</span>` : '<span class="rest-stat-dash">—</span>';
+
+        const rank = r.citywide_rank;
+        const total = r.citywide_total || 0;
+        document.getElementById('stat-citywide').innerHTML =
+            rank != null ? `<span style="color:#222;">${rank}</span>` : '<span class="rest-stat-dash">—</span>';
+        document.getElementById('stat-citywide-lbl').textContent = `Citywide rank (${total} listed)`;
+        document.getElementById('stat-reviews').textContent = r.review_count || 0;
+
+        // ── Approval alert ───────────────────────────────────────────────────
+        const isApproved = acct.is_approved;
+        const isRejected = acct.is_rejected;
+        if (!isApproved && !isRejected) {
+            document.getElementById('rest-pending-alert').classList.add('visible');
+        }
+
+        // ── Verification badge ───────────────────────────────────────────────
+        const badge = document.getElementById('rest-verify-badge');
+        if (isApproved) {
+            badge.textContent = 'Approved ✓';
+            badge.className = 'rest-badge approved';
+        } else if (isRejected) {
+            badge.textContent = 'Rejected';
+            badge.className = 'rest-badge rejected';
+        } else {
+            badge.textContent = 'Pending approval';
+            badge.className = 'rest-badge pending';
+        }
+
+        // ── Activation badge ──────────────────────────────────────────────────
+        const activeBadge = document.getElementById('rest-active-badge');
+        if (r.is_active) {
+            activeBadge.textContent = 'Publicly Visible';
+            activeBadge.className = 'rest-badge approved';
+        } else {
+            activeBadge.textContent = 'Inactive / Hidden';
+            activeBadge.className = 'rest-badge rejected';
+        }
+
+        // ── Availability badge ────────────────────────────────────────────────
+        const availBadge = document.getElementById('rest-avail-badge');
+        if (r.is_temporarily_unavailable) {
+            let label = 'Temporarily Unavailable';
+            if (r.unavailable_until) {
+                // Show a shorter date if it's within 24h, else full date
+                label += ' until ' + r.unavailable_until.replace('T', ' ').substring(0, 16);
+            }
+            availBadge.textContent = label;
+            availBadge.className = 'rest-badge rejected';
+        } else {
+            availBadge.textContent = 'Available Now';
+            availBadge.className = 'rest-badge approved';
+        }
+
+        // ── Profile Completion ───────────────────────────────────────────────
+        const pct = computeCompletion(r);
+        document.getElementById('rest-completion').textContent = pct + '% Complete';
+
+        // ── Recent Activity ──────────────────────────────────────────────────
+        const el = document.getElementById('rest-activity');
+        let html = '';
+        if (acct.date_joined) {
+            html += `<div class="rest-activity-item">
+            <span class="rest-activity-icon">✦</span>
+            <div>
+                <p class="rest-activity-text">Account created successfully</p>
+                <p class="rest-activity-date">${fmtDate(acct.date_joined)}</p>
+            </div>
+        </div>`;
+        }
+        html += '<p class="rest-activity-empty">No additional activity yet</p>';
+        el.innerHTML = html;
+
+        // ── Populate Business Details (read-only) ────────────────────────────
+        populateBusinessDetails(r, data);
+
+        // ── Load reviews ─────────────────────────────────────────────────────
+        if (r.id && !_reviewsLoaded) {
+            loadReviews(r.id);
+            _reviewsLoaded = true;
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    //  Inline Edit
+    // ─────────────────────────────────────────────────────────────────────────────
+    function toggleInlineEdit(show) {
+        const viewMode = document.getElementById('bd-view-mode');
+        const editMode = document.getElementById('bd-edit-mode');
+        if (!viewMode || !editMode) return;
+
+        if (show) {
+            viewMode.style.display = 'none';
+            editMode.style.display = 'block';
+
+            const r = _profileData.restaurant || {};
+            const acct = _profileData.account_status || {};
+
+            // Populate options if empty
+            const cSel = document.getElementById('inp-cuisine');
+            if (cSel.options.length === 0) {
+                _profileData.cuisine_choices.forEach(c => cSel.add(new Option(c.label, c.value)));
+                const pSel = document.getElementById('inp-price');
+                _profileData.price_choices.forEach(p => pSel.add(new Option(p.label, p.value)));
+            }
+
+            document.getElementById('inp-name').value = r.name || '';
+            document.getElementById('txt-edit-username').textContent = r.username || '—';
+            document.getElementById('inp-email').value = r.email || '';
+            document.getElementById('inp-phone').value = r.phone || '';
+            document.getElementById('inp-address').value = r.address || '';
+            document.getElementById('inp-cuisine').value = r.cuisine_type || 'AM'; // Default American
+            document.getElementById('inp-price').value = r.price_range || '$$';
+
+            document.getElementById('txt-edit-msg-hours').textContent = r.messaging_hours_display || 'Not set (always available)';
+
+            if (acct.date_joined) {
+                const dt = new Date(acct.date_joined);
+                document.getElementById('txt-edit-member-since').textContent = dt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+            } else {
+                document.getElementById('txt-edit-member-since').textContent = '—';
+            }
+
+            const fmtTime = (t) => t ? t.substring(0, 5) : '';
+            document.getElementById('inp-open').value = fmtTime(r.hours_open);
+            document.getElementById('inp-close').value = fmtTime(r.hours_close);
+
+            // Match status badge
+            const badge = document.getElementById('bd-edit-acct-badge');
+            if (acct.is_approved) {
+                badge.textContent = 'Approved ✓'; badge.className = 'rest-badge approved';
+            } else if (acct.is_rejected) {
+                badge.textContent = 'Rejected'; badge.className = 'rest-badge rejected';
+            } else {
+                badge.textContent = 'Pending approval'; badge.className = 'rest-badge pending';
+            }
+
+            document.getElementById('inline-error-msg').style.opacity = '0';
+            document.getElementById('err-email').style.display = 'none';
+            document.getElementById('err-phone').style.display = 'none';
+        } else {
+            viewMode.style.display = 'block';
+            editMode.style.display = 'none';
+        }
+    }
+
+    async function saveInlineProfile(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btn-save-inline');
+        btn.disabled = true;
+        btn.textContent = 'Saving...';
+
+        // Clear previous errors
+        document.getElementById('inline-error-msg').style.opacity = '0';
+        document.getElementById('err-email').style.display = 'none';
+        document.getElementById('err-phone').style.display = 'none';
+
+        // Simple format checks for mock validation experience
+        const emailStr = document.getElementById('inp-email').value || '';
+        const phoneStr = document.getElementById('inp-phone').value || '';
+        let hasErr = false;
+
+        if (emailStr && !emailStr.includes('@')) {
+            document.getElementById('err-email').style.display = 'block';
+            hasErr = true;
+        }
+        if (/[a-zA-Z]/.test(phoneStr)) {
+            document.getElementById('err-phone').style.display = 'block';
+            hasErr = true;
+        }
+
+        if (hasErr) {
+            document.getElementById('inline-error-msg').style.opacity = '1';
+            btn.disabled = false;
+            btn.textContent = 'Save Changes';
+            return;
+        }
+
+        const r = _profileData.restaurant || {};
+        const payload = {
+            name: document.getElementById('inp-name').value,
+            cuisine_type: document.getElementById('inp-cuisine').value,
+            price_range: document.getElementById('inp-price').value,
+            address: document.getElementById('inp-address').value,
+            phone: phoneStr,
+            email: emailStr,
+            hours_open: document.getElementById('inp-open').value || r.hours_open,
+            hours_close: document.getElementById('inp-close').value || r.hours_close,
+            // Include fields not in this inline form but required/expected by the backend form
+            description: r.description,
+            website: r.website
+        };
+
+        try {
+            const resp = await apiFetch('/api/restaurant/profile/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
+                },
+                body: JSON.stringify(payload)
+            });
+
+            let resData = {};
+            try {
+                resData = await resp.json();
+            } catch (e) {
+                resData = { error: `Server error (${resp.status})` };
+            }
+
+            if (resp.ok && (resData.success || !resData.error)) {
+                // Update local data
+                _profileData.restaurant = resData.restaurant || _profileData.restaurant;
+                renderDashboard(_profileData); // Refresh displays
+                showToast("Profile updated successfully!");
+                toggleInlineEdit(false);
+            } else {
+                let errMsg = resData.error || "Failed to save profile changes.";
+                if (resData.errors) {
+                    // If specific field errors exist, show the first one
+                    const firstKey = Object.keys(resData.errors)[0];
+                    errMsg = `${firstKey}: ${resData.errors[firstKey][0]}`;
+                }
+                showToast(errMsg);
+                document.getElementById('inline-error-msg').textContent = errMsg;
+                document.getElementById('inline-error-msg').style.opacity = '1';
+            }
+        } catch (err) {
+            console.error(err);
+            showToast("Network error trying to save profile.");
+        }
+
+        btn.disabled = false;
+        btn.textContent = 'Save Changes';
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    //  Helpers
+    // ─────────────────────────────────────────────────────────────────────────────
+    function fmtPriceLabel(value, choices) {
+        if (!choices) return value || '';
+        const found = choices.find(c => c.value === value);
+        return found ? found.label : (value || '');
+    }
+
+    function fmtCuisineLabel(value, choices) {
+        if (!choices) return value || '';
+        const found = choices.find(c => c.value === value);
+        return found ? found.label : (value || '');
+    }
+
+    function fmtDate(iso) {
+        try {
+            return new Date(iso).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+        } catch (_) { return iso || ''; }
+    }
+
+    function esc(str) {
+        const d = document.createElement('div');
+        d.appendChild(document.createTextNode(str || ''));
+        return d.innerHTML;
+    }
+
+    function showToast(msg) {
+        const t = document.getElementById('rest-toast');
+        t.textContent = msg;
+        t.classList.add('show');
+        clearTimeout(t._tid);
+        t._tid = setTimeout(() => t.classList.remove('show'), 3500);
+    }
+
+    function handleLogout() {
+        apiFetch('/api/auth/logout/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() }
+        }).then(() => { window.location.href = '/home/'; });
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    //  Profile completion calculator
+    // ─────────────────────────────────────────────────────────────────────────────
+    function computeCompletion(r) {
+        const checks = [
+            !!r.name,
+            !!(r.cuisine_type),
+            !!(r.price_range),
+            !!(r.hours_open && r.hours_close),
+            !!(r.address),
+            !!(r.phone),
+            !!(r.website),
+            !!(r.email),
+            !!(r.description),
+            r.messaging_enabled !== undefined,
+        ];
+        return Math.round((checks.filter(Boolean).length / checks.length) * 100);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    //  Tab switching
+    // ─────────────────────────────────────────────────────────────────────────────
+    function switchTab(name, btn) {
+        document.querySelectorAll('.rest-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.rest-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('tab-' + name).classList.add('active');
+
+        if (name === 'performance' && !_perfLoaded) {
+            loadPerformance();
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    //  Performance Metrics
+    // ─────────────────────────────────────────────────────────────────────────────
+    async function loadPerformance() {
+        document.getElementById('perf-loading').style.display = 'flex';
+        document.getElementById('perf-content').style.display = 'none';
+
+        try {
+            const resp = await apiFetch('/api/restaurant/performance/?t=' + new Date().getTime());
+            if (!resp.ok) throw new Error('HTTP ' + resp.status);
+            const data = await resp.json();
+            renderPerformance(data);
+            _perfLoaded = true;
+        } catch (err) {
+            console.error('[restaurant-dashboard] performance error:', err);
+            document.getElementById('perf-loading').innerHTML =
+                '<span style="color:#dc2626;font-size:14px;">Failed to load performance data.</span>';
+            return;
+        }
+
+        document.getElementById('perf-loading').style.display = 'none';
+        document.getElementById('perf-content').style.display = 'block';
+    }
+
+    function renderPerformance(data) {
+        // Top stats
+        const cs = data.composite_score;
+        document.getElementById('perf-score').textContent = cs != null ? cs.toFixed(1) : '—';
+        const ir = data.inspection_rating;
+        document.getElementById('perf-insp').textContent = ir != null ? ir.toFixed(1) : '—';
+        document.getElementById('perf-rc').textContent = data.review_count || 0;
+
+        const pct = data.approx_percentile;
+        document.getElementById('perf-pct').textContent = pct != null ? pct + 'th' : '—';
+
+        // Factor breakdown
+        const brkEl = document.getElementById('perf-breakdown');
+        const factors = data.breakdown || [];
+        if (factors.length) {
+            brkEl.innerHTML = factors.map((f, i) => `
+            <div class="rest-factor">
+                <div class="rest-factor-header">
+                    <span class="rest-factor-label">${esc(f.label)}</span>
+                    <span class="rest-factor-score">${f.score != null ? f.score.toFixed(1) : '—'}</span>
+                </div>
+                <div class="rest-bar-bg">
+                    <div class="rest-bar-fill" id="bar-fill-${i}"></div>
+                </div>
+                <p class="rest-factor-desc">${esc(f.description)}</p>
+            </div>
+        `).join('');
+            // Animate bars (defer so CSS transition fires)
+            requestAnimationFrame(() => setTimeout(() => {
+                factors.forEach((f, i) => {
+                    const el = document.getElementById('bar-fill-' + i);
+                    if (el && f.score != null) el.style.width = Math.min(100, f.score) + '%';
+                });
+            }, 50));
+        }
+
+        // Review parameter breakdown
+        const params = data.review_params;
+        if (params && Object.keys(params).length) {
+            const labels = {
+                food: 'Food Quality', service: 'Service', ambience: 'Ambience',
+                location: 'Location', value: 'Value', cleanliness: 'Cleanliness'
+            };
+            document.getElementById('perf-rev-params').innerHTML = Object.entries(params).map(([k, v]) => `
+            <div style="margin-bottom:0.75rem;">
+                <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
+                    <span style="color:#666;">${labels[k] || k}</span>
+                    <span style="font-weight:600;color:var(--red);">${v.toFixed(1)}</span>
+                </div>
+                <div style="height:6px;background:rgba(212, 43, 43,0.1);border-radius:99px;overflow:hidden;">
+                    <div style="height:100%;background:linear-gradient(90deg,var(--red),#b82020);border-radius:99px;width:${Math.min(100, (v / 5) * 100).toFixed(1)}%;transition:width 1.1s ease;"></div>
+                </div>
+            </div>
+        `).join('');
+        }
+
+        // Historical trend
+        const history = data.history || [];
+        if (history.length > 0) {
+            document.getElementById('perf-history').innerHTML = history.map(h => `
+            <div style="display:flex;justify-content:space-between;font-size:13px;padding:0.4rem 0;border-bottom:1px solid rgba(0,0,0,0.05);">
+                <span style="color:#888;">${esc(h.date || '')}</span>
+                <span style="font-weight:600;color:var(--red);">${h.score != null ? h.score.toFixed(1) : '—'}</span>
+            </div>
+        `).join('');
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    //  Business Details (read-only)
+    // ─────────────────────────────────────────────────────────────────────────────
+    function populateBusinessDetails(r, data) {
+        const acct = data.account_status || {};
+
+        document.getElementById('bd-name').textContent = r.name || '—';
+        document.getElementById('bd-username').textContent = r.username || '—';
+        document.getElementById('bd-email').textContent = r.email || '';
+        document.getElementById('bd-phone').textContent = r.phone || 'Not provided';
+        document.getElementById('bd-address').textContent = r.address || 'Not provided';
+        document.getElementById('bd-member-since').textContent = acct.date_joined ? fmtDate(acct.date_joined) : '—';
+
+        // Cuisine
+        const cuisineLabel = fmtCuisineLabel(r.cuisine_type, data.cuisine_choices);
+        document.getElementById('bd-cuisine').textContent = cuisineLabel || '—';
+
+        // Price
+        const priceLabel = fmtPriceLabel(r.price_range, data.price_choices);
+        document.getElementById('bd-price').textContent = priceLabel || '—';
+
+        // Operating hours
+        if (r.hours_open && r.hours_close) {
+            document.getElementById('bd-hours').textContent = r.hours_open + ' – ' + r.hours_close;
+        } else {
+            document.getElementById('bd-hours').textContent = '—';
+        }
+
+        // Messaging hours
+        document.getElementById('bd-msg-hours').textContent = r.messaging_hours_display || 'Not set (always available)';
+
+        // Account status badge
+        const bdBadge = document.getElementById('bd-acct-badge');
+        if (acct.is_approved) {
+            bdBadge.textContent = 'Approved ✓';
+            bdBadge.className = 'rest-badge approved';
+        } else if (acct.is_rejected) {
+            bdBadge.textContent = 'Rejected';
+            bdBadge.className = 'rest-badge rejected';
+        } else {
+            bdBadge.textContent = 'Pending approval';
+            bdBadge.className = 'rest-badge pending';
+        }
+
+        // Account type
+        const bdType = document.getElementById('bd-account-type');
+        if (bdType) bdType.textContent = 'Restaurant';
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    //  Reviews
+    // ─────────────────────────────────────────────────────────────────────────────
+    async function loadReviews(restaurantId) {
+        try {
+            const resp = await apiFetch('/api/restaurants/' + restaurantId + '/');
+            if (!resp.ok) return;
+            const data = await resp.json();
+            const reviews = data.reviews || [];
+            const el = document.getElementById('rest-reviews-list');
+
+            if (!reviews.length) {
+                el.innerHTML = '<p style="text-align:center;color:#999;font-size:14px;padding:1rem 0;">No reviews yet.</p>';
+                return;
+            }
+
+            el.innerHTML = reviews.map(rv => {
+                const stars = Math.round(rv.rating || 0);
+                return `<div class="rest-review-card">
+                <div class="rest-review-header">
+                    <span class="rest-review-user">@${esc(rv.username)}</span>
+                    <span class="rest-review-date">${fmtDate(rv.created_at)}</span>
+                </div>
+                <div class="rest-review-stars">${'★'.repeat(stars)}${'☆'.repeat(5 - stars)}
+                    <span style="font-size:13px;color:#888;margin-left:4px;">${(rv.rating || 0).toFixed(1)}/5</span>
+                </div>
+                <p class="rest-review-text">${esc(rv.comment || '(No comment left)')}</p>
+            </div>`;
+            }).join('');
+        } catch (err) {
+            console.error('[restaurant-dashboard] reviews error:', err);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    //  Availability Modal
+    // ─────────────────────────────────────────────────────────────────────────────
+    // Modal Functions
+    // ─────────────────────────────────────────────────────────────────────────────
+    async function openAvailModal() {
+        const modal = document.getElementById('avail-modal');
+        modal.style.display = 'flex';
+        
+        // Show loading state or clear previous values
+        document.getElementById('mod-avail-reason').placeholder = "Loading...";
+        
+        try {
+            const r = await apiFetch('/api/restaurant/availability/');
+            if (!r.ok) throw new Error('Failed to fetch availability');
+            const data = await r.json();
+            document.getElementById('mod-avail-is-unavailable').checked = !!data.is_temporarily_unavailable;
+            document.getElementById('mod-avail-reason').value = data.unavailable_reason || '';
+            document.getElementById('mod-avail-reason').placeholder = "e.g., Renovations, Special Event, Staffing Issues...";
+            document.getElementById('mod-avail-until').value = data.unavailable_until ? data.unavailable_until.slice(0, 16) : '';
+        } catch(e) { 
+            console.error(e);
+            showToast("Failed to load availability data.");
+        }
+    }
+
+    async function saveAvailModal() {
+        const btn = document.getElementById('btn-save-avail');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = 'Saving...'; btn.disabled = true;
+        const payload = {
+            is_temporarily_unavailable: document.getElementById('mod-avail-is-unavailable').checked,
+            unavailable_reason: document.getElementById('mod-avail-reason').value,
+            unavailable_until: document.getElementById('mod-avail-until').value
+        };
+        try {
+            const resp = await apiFetch('/api/restaurant/availability/', { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
+                body: JSON.stringify(payload) 
+            });
+
+            if (!resp.ok) {
+                const resData = await resp.json();
+                throw new Error(resData.error || "Failed to update availability.");
+            }
+
+            document.getElementById('avail-modal').style.display = 'none';
+            showToast("Availability status updated.");
+            await init(); 
+        } catch(e) {
+            showToast(e.message || "Failed to update availability.");
+        } finally { btn.innerHTML = originalText; btn.disabled = false; }
+    }
+
+    function updateCommStatusBox() {
+        const enabled = document.getElementById('mod-comm-enabled').checked;
+        document.getElementById('mod-comm-toggle-slider').style.backgroundColor = enabled ? 'var(--red)' : '#ccc';
+        document.getElementById('mod-comm-toggle-knob').style.transform = enabled ? 'translateX(20px)' : 'translateX(0)';
+        
+        const box = document.getElementById('mod-comm-status-box');
+        if(enabled) {
+            box.style.background = '#F0FDF4'; box.style.borderColor = '#BBF7D0'; box.style.color = '#166534';
+            box.innerHTML = `<svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20" style="flex-shrink:0"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg><span>Messaging is currently <strong>Enabled</strong> — diners can send you messages.</span>`;
+        } else {
+            box.style.background = '#FEE2E2'; box.style.borderColor = '#FECACA'; box.style.color = '#991B1B';
+            box.innerHTML = `<svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20" style="flex-shrink:0"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg><span>Messaging is currently <strong>Disabled</strong>.</span>`;
+        }
+    }
+
+    async function openSettingsModal() {
+        const modal = document.getElementById('settings-modal');
+        modal.style.display = 'flex';
+
+        try {
+            const r = await apiFetch('/api/restaurant/communication/');
+            if (!r.ok) throw new Error('Failed to fetch communication settings');
+            const data = await r.json();
+            document.getElementById('mod-comm-enabled').checked = !!data.messaging_enabled;
+            const fmtTime = (t) => t ? t.substring(0,5) : '';
+            document.getElementById('mod-comm-start').value = fmtTime(data.response_hours_start);
+            document.getElementById('mod-comm-end').value = fmtTime(data.response_hours_end);
+            updateCommStatusBox();
+        } catch(e) { 
+            console.error(e);
+            showToast("Failed to load settings.");
+        }
+    }
+
+    async function saveSettingsModal() {
+        const btn = document.getElementById('btn-save-comm');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = 'Saving...'; btn.disabled = true;
+        const payload = {
+            messaging_enabled: document.getElementById('mod-comm-enabled').checked,
+            response_hours_start: document.getElementById('mod-comm-start').value || null,
+            response_hours_end: document.getElementById('mod-comm-end').value || null,
+            messaging_unavailable_message: ''
+        };
+        try {
+            const resp = await apiFetch('/api/restaurant/communication/', { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
+                body: JSON.stringify(payload) 
+            });
+            
+            const resData = await resp.json();
+            if (!resp.ok) {
+                let msg = resData.error || "Failed to save settings.";
+                if (resData.errors) {
+                    const firstKey = Object.keys(resData.errors)[0];
+                    msg = resData.errors[firstKey][0];
+                }
+                throw new Error(msg);
+            }
+
+            document.getElementById('settings-modal').style.display = 'none';
+            showToast("Communication settings updated.");
+            await init(); 
+        } catch(e) {
+            showToast(e.message || "Failed to save settings.");
+        } finally { btn.innerHTML = originalText; btn.disabled = false; }
+    }
+
+    function updateActStatusBox() {
+        const enabled = document.getElementById('mod-act-enabled').checked;
+        document.getElementById('mod-act-toggle-slider').style.backgroundColor = enabled ? '#22C55E' : '#ccc';
+        document.getElementById('mod-act-toggle-knob').style.transform = enabled ? 'translateX(20px)' : 'translateX(0)';
+        document.getElementById('mod-act-text').textContent = enabled ? 'Your profile is currently active' : 'Your profile is currently inactive';
+        
+        const btn = document.getElementById('btn-save-act');
+        if (enabled) {
+            btn.textContent = 'Activate Profile';
+            btn.style.background = '#22C55E';
+        } else {
+            btn.textContent = 'Deactivate Profile';
+            btn.style.background = 'var(--red)';
+        }
+    }
+
+    async function openActivationModal() {
+        const modal = document.getElementById('activation-modal');
+        modal.style.display = 'flex';
+
+        try {
+            const r = await apiFetch('/api/restaurant/activation/');
+            if (!r.ok) throw new Error('Failed to fetch activation status');
+            const data = await r.json();
+            document.getElementById('mod-act-enabled').checked = !!data.is_active;
+            updateActStatusBox();
+        } catch(e) { 
+            console.error(e);
+            showToast("Failed to load activation status.");
+        }
+    }
+
+    async function saveActivationModal() {
+        const btn = document.getElementById('btn-save-act');
+        const originalText = btn.innerHTML;
+        const isActive = document.getElementById('mod-act-enabled').checked;
+        btn.innerHTML = 'Updating...'; btn.disabled = true;
+        try {
+            const resp = await apiFetch('/api/restaurant/activation/', { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
+                body: JSON.stringify({ is_active: isActive })
+            });
+
+            const resData = await resp.json();
+            if (!resp.ok) {
+                throw new Error(resData.error || "Failed to update status.");
+            }
+
+            document.getElementById('activation-modal').style.display = 'none';
+            showToast(isActive ? "Profile activated!" : "Profile deactivated.");
+            await init(); 
+        } catch(e) {
+            showToast(e.message || "Failed to update status.");
+        } finally { btn.innerHTML = originalText; btn.disabled = false; }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    //  Photos Modal logic
+    // ─────────────────────────────────────────────────────────────────────────────
+    async function openPhotosModal() {
+        document.getElementById('photos-modal').style.display = 'flex';
+        loadPhotosModal();
+    }
+
+    async function loadPhotosModal() {
+        const container = document.getElementById('modal-photos-grid');
+        container.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 40px; color: #888;">Loading photos...</div>';
+        
+        try {
+            const r = await apiFetch('/api/restaurant/photos/data/');
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            const d = await r.json();
+            
+            if (d.photos && d.photos.length > 0) {
+                container.innerHTML = d.photos.map(p => `
+                    <div class="modal-photo-card">
+                        <img src="${p.url}" alt="Restaurant Photo" onerror="this.onerror=null;this.src='https://placehold.co/400x400?text=Image+Error'"/>
+                        <button onclick="deletePhotoModal(${p.id})" class="modal-btn-delete" title="Delete Photo">×</button>
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = `
+                    <div class="modal-empty-state">
+                        <div style="font-size: 40px; margin-bottom: 15px; opacity: 0.5;">📸</div>
+                        <h3 style="color: #333; font-size: 18px; margin-bottom: 8px;">No photos yet</h3>
+                        <p style="color: #888; font-size: 14px; margin: 0;">Upload your first photo to showcase your restaurant!</p>
+                    </div>
+                `;
+            }
+        } catch(e) {
+            console.error(e);
+            container.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 40px; color: var(--red);">Failed to load photos.</div>';
+        }
+    }
+
+    async function uploadPhotosModal() {
+        const files = document.getElementById('modal-upload-input').files;
+        if (files.length === 0) return;
+        
+        const btn = document.getElementById('btn-modal-upload');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<span style="display:flex; align-items:center; gap:8px;"><svg class="animate-spin" width="16" height="16" fill="none" viewBox="0 0 24 24"><circle style="opacity:0.25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path style="opacity:0.75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Uploading...</span>';
+        btn.disabled = true;
+        
+        let successCount = 0;
+        let failCount = 0;
+
+        for(let f of files) {
+            const fd = new FormData();
+            fd.append('photo', f); // Backend expects 'photo' field
+            
+            try {
+                const resp = await fetch('/api/restaurant/photos/upload/', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'X-CSRFToken': getCSRFToken() },
+                    body: fd
+                });
+                if (!resp.ok) throw new Error('Upload failed');
+                successCount++;
+            } catch (e) {
+                console.error(e);
+                failCount++;
+            }
+        }
+        
+        document.getElementById('modal-upload-input').value = ''; 
+        loadPhotosModal();
+        
+        if (failCount === 0) {
+            showToast(`Successfully uploaded ${successCount} photo(s)!`);
+        } else if (successCount > 0) {
+            showToast(`Uploaded ${successCount} photos, but ${failCount} failed.`);
+        } else {
+            showToast("Failed to upload photos.");
+        }
+        
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+
+    async function deletePhotoModal(id) {
+        if(!confirm("Are you sure you want to delete this photo?")) return;
+        try {
+            const resp = await apiFetch(`/api/restaurant/photos/${id}/delete/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCSRFToken() }
+            });
+            if (resp.ok) {
+                loadPhotosModal();
+                showToast("Photo deleted.");
+            } else {
+                throw new Error('Delete failed');
+            }
+        } catch (e) {
+            console.error(e);
+            showToast("Failed to delete photo.");
+        }
+    }
+
+    init();
+
+    // ── Global modal keyboard + backdrop close ────────────────────────────────
+    const MODAL_IDS = ['avail-modal', 'settings-modal', 'activation-modal', 'photos-modal'];
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            MODAL_IDS.forEach(id => {
+                const m = document.getElementById(id);
+                if (m) m.style.display = 'none';
+            });
+        }
+    });
+
+    MODAL_IDS.forEach(id => {
+        const m = document.getElementById(id);
+        if (!m) return;
+        m.addEventListener('click', (e) => {
+            // Close only if the click is on the backdrop itself (not the inner card)
+            if (e.target === m) m.style.display = 'none';
+        });
+    });
+</script>
+
+<!-- Availability Modal -->
+<div id="avail-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.7); z-index:9999; justify-content:center; align-items:center; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);">
+    <div style="background:#fff; width:100%; max-width:640px; border-radius:12px; overflow:hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.1); border: 1px solid rgba(0,0,0,0.05);">
+        <div style="background:var(--red); color:white; padding:20px 24px; font-size:18px; font-weight:400;">
+            Manage Restaurant Availability
+        </div>
+        <div style="padding:24px;">
+            <p style="color:#666; margin-bottom:24px; font-size:14px; line-height:1.5;">Use this page to temporarily mark your restaurant as unavailable for a period of time. This allows you to inform customers of closures, renovations, or special events.</p>
+            <div style="border:1px solid #f2cfd4; padding:16px; border-radius:8px; margin-bottom:24px; display:flex; align-items:flex-start; gap:12px;">
+                <input type="checkbox" id="mod-avail-is-unavailable" style="margin-top:4px; width:18px; height:18px; accent-color:var(--red);" />
+                <div>
+                    <label for="mod-avail-is-unavailable" style="font-weight:400; color:#333; display:block; margin-bottom:4px;">Mark as Temporarily Unavailable</label>
+                    <div style="color:#888; font-size:12px;">Check this box if your restaurant is temporarily closed or unavailable.</div>
+                </div>
+            </div>
+            <div style="margin-bottom:24px;">
+                <label style="display:block; font-weight:400; margin-bottom:8px; color:#333; font-size:14px;">Reason for Unavailability</label>
+                <textarea id="mod-avail-reason" class="form-input" style="height:100px; resize:none;" placeholder="e.g., Renovations, Special Event, Staffing Issues..."></textarea>
+                <div style="color:#888; font-size:12px; margin-top:6px;">This message will be displayed to customers.</div>
+            </div>
+            <div style="margin-bottom:24px;">
+                <label style="display:block; font-weight:400; margin-bottom:8px; color:#333; font-size:14px;">Available Again On</label>
+                <input type="datetime-local" id="mod-avail-until" class="form-input" />
+                <div style="color:#888; font-size:12px; margin-top:6px;">Select when your restaurant will be available again.</div>
+            </div>
+            <div style="border:1px solid #eee; padding:16px; border-radius:8px; margin-bottom:24px;">
+                <div style="font-weight:400; margin-bottom:12px; font-size:14px; color:#333;">Common Reasons for Unavailability:</div>
+                <ul style="color:#777; font-size:13px; margin:0; padding-left:16px; line-height:1.6;">
+                    <li>Renovations and maintenance</li>
+                    <li>Equipment repairs or replacement</li>
+                    <li>Staff training or reorganization</li>
+                    <li>Special event or private catering</li>
+                    <li>Temporary staffing shortage</li>
+                    <li>Inventory replenishment</li>
+                    <li>Holiday or seasonal closure</li>
+                </ul>
+            </div>
+            <div style="display:flex; gap:12px;">
+                <button onclick="saveAvailModal()" id="btn-save-avail" style="background:var(--red); color:white; border:none; padding:12px 24px; border-radius:8px; font-size:14px; cursor:pointer;">Save Changes</button>
+                <button onclick="document.getElementById('avail-modal').style.display='none'" style="background:white; color:var(--red); border:1px solid #f2cfd4; padding:12px 24px; border-radius:8px; font-size:14px; cursor:pointer;">Back to Profile</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Settings Modal -->
+<div id="settings-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.7); z-index:9999; justify-content:center; align-items:center; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);">
+    <div style="background:#fff; width:100%; max-width:640px; border-radius:12px; overflow:hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.1); border: 1px solid rgba(0,0,0,0.05);">
+        <div style="background:var(--red); color:white; padding:20px 24px; font-size:18px; font-weight:400; display:flex; align-items:center; gap:8px;">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+            Communication Settings
+        </div>
+        <div style="padding:24px;">
+            <p style="color:#666; margin-bottom:24px; font-size:14px; line-height:1.5;">Control when and how diners can reach you through the Nomz messaging system.</p>
+            
+            <div id="mod-comm-status-box" style="background:#F0FDF4; border:1px solid #BBF7D0; padding:16px; border-radius:8px; margin-bottom:24px; display:flex; align-items:center; gap:12px; color:#166534; font-size:14px;">
+                <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20" style="flex-shrink:0"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+                <span>Messaging is currently <strong>Enabled</strong> — diners can send you messages.</span>
+            </div>
+            
+            <div style="border:1px solid #f2cfd4; padding:20px; border-radius:8px; margin-bottom:24px; display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <div style="font-weight:400; color:#333; margin-bottom:8px;">Messaging Toggle</div>
+                    <div style="color:#888; font-size:12px;">When disabled, diners will not be able to send you new messages.</div>
+                </div>
+                <label style="position:relative; display:inline-block; width:44px; height:24px;">
+                    <input type="checkbox" id="mod-comm-enabled" onchange="updateCommStatusBox()" style="opacity:0; width:0; height:0;" />
+                    <span style="position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background-color:#ccc; transition:.4s; border-radius:24px;" id="mod-comm-toggle-slider"></span>
+                    <span style="position:absolute; content:''; height:18px; width:18px; left:3px; bottom:3px; background-color:white; transition:.4s; border-radius:50%;" id="mod-comm-toggle-knob"></span>
+                </label>
+            </div>
+            
+            <div style="margin-bottom:24px;">
+                <label style="display:block; font-weight:400; margin-bottom:4px; color:#333; font-size:14px;">Response Hours (optional)</label>
+                <div style="color:#888; font-size:12px; margin-bottom:12px;">Let diners know what time window you typically respond. This is informational only.</div>
+                <div style="display:flex; align-items:center; gap:0.75rem;">
+                    <div style="flex:1;">
+                        <div style="font-size:12px; color:#666; margin-bottom:4px;">Response Hours Start</div>
+                        <input type="time" id="mod-comm-start" class="form-input" />
+                    </div>
+                    <div style="flex:1;">
+                        <div style="font-size:12px; color:#666; margin-bottom:4px;">Response Hours End</div>
+                        <input type="time" id="mod-comm-end" class="form-input" />
+                    </div>
+                </div>
+                <div style="display:flex; gap:0.75rem; margin-top:4px;">
+                    <div style="flex:1; font-size:11px; color:#aaa;">Earliest time you typically respond to messages (optional).</div>
+                    <div style="flex:1; font-size:11px; color:#aaa;">Latest time you typically respond to messages (optional).</div>
+                </div>
+            </div>
+            
+            <div style="display:flex; gap:12px; margin-top: 30px;">
+                <button onclick="saveSettingsModal()" id="btn-save-comm" style="background:var(--red); color:white; border:none; padding:12px 24px; border-radius:8px; font-size:14px; cursor:pointer;">Save Settings</button>
+                <button onclick="document.getElementById('settings-modal').style.display='none'" style="background:white; color:#666; border:1px solid #ddd; padding:12px 24px; border-radius:8px; font-size:14px; cursor:pointer;">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Activation Modal -->
+<div id="activation-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.7); z-index:9999; justify-content:center; align-items:center; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);">
+    <div style="background:#fff; width:100%; max-width:640px; border-radius:12px; overflow:hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.1); border: 1px solid rgba(0,0,0,0.05); padding:30px;">
+        <h2 style="font-size:24px; font-weight:700; color:#111; margin-top:0; margin-bottom:12px;">Manage Profile Status</h2>
+        <p style="color:#666; margin-bottom:30px; font-size:14px; line-height:1.5;">Control whether your restaurant profile is visible to customers. When your profile is deactivated, it will no longer appear in searches or recommendations.</p>
+        
+        <div style="background:var(--paper); border:1px solid #f2cfd4; padding:20px; border-radius:8px; margin-bottom:24px; display:flex; justify-content:space-between; align-items:center;">
+            <div>
+                <div style="font-weight:500; color:#333; margin-bottom:8px;">Profile Status</div>
+                <div id="mod-act-text" style="color:#888; font-size:13px;">Your profile is currently active</div>
+            </div>
+            <label style="position:relative; display:inline-block; width:44px; height:24px;">
+                <input type="checkbox" id="mod-act-enabled" onchange="updateActStatusBox()" style="opacity:0; width:0; height:0;" />
+                <span style="position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background-color:#ccc; transition:.4s; border-radius:24px;" id="mod-act-toggle-slider"></span>
+                <span style="position:absolute; content:''; height:18px; width:18px; left:3px; bottom:3px; background-color:white; transition:.4s; border-radius:50%;" id="mod-act-toggle-knob"></span>
+            </label>
+        </div>
+        
+        <div style="background:#FFF5F5; border:1px solid #FFE2E2; padding:20px; border-radius:8px; margin-bottom:30px;">
+            <div style="font-weight:500; color:var(--red); margin-bottom:12px; font-size:14px;">What happens when you deactivate?</div>
+            <ul style="color:#666; font-size:13px; margin:0; padding-left:20px; line-height:2;">
+                <li>Your profile will be hidden from customer searches</li>
+                <li>Customers cannot make reservations or orders</li>
+                <li>Your profile data is preserved and can be reactivated anytime</li>
+                <li>You can still log in and edit information while inactive</li>
+            </ul>
+        </div>
+        
+        <div style="display:flex; justify-content:center; gap:12px;">
+            <button onclick="document.getElementById('activation-modal').style.display='none'" style="background:white; color:var(--red); border:1px solid #f2cfd4; padding:12px 24px; border-radius:8px; font-size:14px; cursor:pointer;">Back to Profile</button>
+            <button onclick="saveActivationModal()" id="btn-save-act" style="background:var(--red); color:white; border:none; padding:12px 24px; border-radius:8px; font-size:14px; cursor:pointer;">Deactivate Profile</button>
+        </div>
+    </div>
+</div>
+
+<!-- Photos Modal -->
+<div id="photos-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.7); z-index:9999; justify-content:center; align-items:center; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);">
+    <div style="background:#fff; width:100%; max-width:700px; border-radius:24px; overflow:hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.12); border: 1px solid rgba(212, 43, 43,0.1);">
+        <div style="background: linear-gradient(135deg, var(--red) 0%, #b82020 100%); color:white; padding:24px 30px; display:flex; align-items:center; justify-content:space-between;">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <div style="background:rgba(255,255,255,0.2); width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:20px;">📸</div>
+                <div>
+                    <h2 style="margin:0; font-size:20px; font-weight:600; letter-spacing:-0.02em;">Manage Restaurant Photos</h2>
+                    <p style="margin:0; font-size:13px; opacity:0.9;">Showcase your best dishes and ambience</p>
+                </div>
+            </div>
+            <button onclick="document.getElementById('photos-modal').style.display='none'" style="background:rgba(0,0,0,0.1); border:none; color:white; width:32px; height:32px; border-radius:50%; cursor:pointer; font-size:18px; display:flex; align-items:center; justify-content:center; transition:background 0.2s;">×</button>
+        </div>
+        
+        <div style="padding:30px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
+                <h3 style="margin:0; font-size:16px; font-weight:600; color:#333;">Your Gallery</h3>
+                <div>
+                    <input type="file" id="modal-upload-input" accept="image/*" multiple style="display:none;" onchange="uploadPhotosModal()"/>
+                    <button id="btn-modal-upload" onclick="document.getElementById('modal-upload-input').click()" class="rest-btn-primary" style="display:flex; align-items:center; gap:8px;">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4"></path></svg>
+                        Upload Photos
+                    </button>
+                </div>
+            </div>
+            
+            <div id="modal-photos-grid" class="modal-photo-grid">
+                <!-- Loaded via JS -->
+            </div>
+            
+            <div style="margin-top:30px; padding-top:20px; border-top:1px solid rgba(0,0,0,0.05); display:flex; justify-content:flex-end;">
+                <button onclick="document.getElementById('photos-modal').style.display='none'" class="rest-btn-outline" style="padding:10px 24px; border: 1px solid #ddd; border-radius:12px; background:white; color:#666; font-size:14px; font-weight:500; cursor:pointer;">Close Gallery</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

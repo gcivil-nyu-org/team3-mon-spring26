@@ -1,0 +1,811 @@
+{% extends 'nomz/base.html' %}
+{% block main_layout %}
+<style>
+    nav.navbar { display: none !important; }
+    body > footer { display: none !important; }
+
+    @keyframes float {
+        0%, 100% { transform: translate(0, 0) scale(1); }
+        50% { transform: translate(-20px, 20px) scale(1.05); }
+    }
+
+    /* ── DEFINITIVE FULL-WIDTH OVERRIDES ── */
+    body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: linear-gradient(135deg, var(--paper) 0%, rgba(200,169,110,0.12) 50%, var(--paper) 100%) !important;
+        font-family: var(--font-sans);
+        min-height: 100vh;
+        overflow-x: hidden;
+    }
+
+    .profile-page-wrapper {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        width: 100vw; height: 100vh;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        background: transparent;
+        z-index: 9999;
+    }
+
+    /* Floating Gradient Orbs */
+    .dashboard-orbs div {
+        position: absolute;
+        border-radius: 50%;
+        pointer-events: none;
+    }
+    .orb-1 { top: 10%; left: 5%; width: 400px; height: 400px; background: radial-gradient(circle, rgba(212, 43, 43, 0.15) 0%, transparent 70%); animation: float 15s ease-in-out infinite; }
+    .orb-2 { bottom: 15%; right: 8%; width: 500px; height: 500px; background: radial-gradient(circle, rgba(212, 43, 43, 0.1) 0%, transparent 70%); animation: float 20s ease-in-out infinite reverse; }
+    .orb-3 { top: 50%; left: 50%; width: 350px; height: 350px; background: radial-gradient(circle, rgba(212, 43, 43, 0.08) 0%, transparent 70%); animation: float 25s ease-in-out infinite; transform: translate(-50%, -50%); }
+
+    /* Layout */
+    .profile-container {
+        flex: 1;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 4.2rem 1.75rem 1.25rem;
+        position: relative;
+        z-index: 10;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        width: 100%;
+    }
+
+    /* Cards */
+    .glass-card {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(212, 43, 43, 0.15);
+        border-radius: 20px;
+        padding: 1.25rem 1.75rem;
+        box-shadow: 0 4px 16px rgba(212, 43, 43, 0.05);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .glass-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(212, 43, 43, 0.1); }
+
+    /* Profile Header */
+    .profile-header {
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+        padding: 1rem 1.75rem;
+    }
+
+    .profile-avatar-placeholder {
+        width: 60px; height: 60px;
+        background: linear-gradient(135deg, rgba(212, 43, 43, 0.1) 0%, rgba(212, 43, 43, 0.2) 100%);
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        color: var(--red);
+        border: 2px solid rgba(212, 43, 43, 0.3);
+    }
+    
+    .profile-info h2 { color: var(--red); font-size: 20px; font-weight: 700; margin: 0 0 0.25rem 0; }
+    .profile-info p { color: #666; margin: 0; font-size: 14px; }
+
+    .header-actions { margin-left: auto; }
+
+    .edit-profile-btn {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        background: rgba(255,255,255,0.7);
+        border: 1px solid rgba(212,43,43,0.25);
+        border-radius: 12px;
+        color: var(--red);
+        font-size: 13px;
+        font-weight: 600;
+        font-family: var(--font-sans);
+        cursor: pointer;
+        transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+        backdrop-filter: blur(8px);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .edit-profile-btn:hover {
+        background: rgba(212,43,43,0.08);
+        border-color: rgba(212,43,43,0.4);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(212,43,43,0.15);
+    }
+
+    /* Preferences wizard */
+    .wizard-progress {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.75rem;
+        align-items: center;
+        max-width: 860px;
+        width: 100%;
+        margin: 0 auto;
+    }
+    .wizard-step {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        color: #a7a2a0;
+    }
+    .wizard-dot {
+        width: 2.25rem;
+        height: 2.25rem;
+        border-radius: 50%;
+        border: 2px solid rgba(212,43,43,0.2);
+        background: rgba(255,255,255,0.75);
+        color: #7d7773;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 0.95rem;
+        flex-shrink: 0;
+    }
+    .wizard-line {
+        flex: 1;
+        height: 2px;
+        background: rgba(212,43,43,0.15);
+    }
+    .wizard-label {
+        font-size: 0.76rem;
+        letter-spacing: 0.14em;
+        font-weight: 700;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+    .wizard-step.is-active { color: var(--red); }
+    .wizard-step.is-active .wizard-dot {
+        border-color: var(--red);
+        color: var(--red);
+        box-shadow: 0 0 0 6px rgba(212,43,43,0.08);
+    }
+    .wizard-step.is-complete .wizard-dot {
+        background: var(--red);
+        border-color: var(--red);
+        color: #fff;
+    }
+    .wizard-step.is-complete .wizard-line {
+        background: rgba(212,43,43,0.6);
+    }
+
+    .wizard-card {
+        padding: 1.35rem 1.5rem;
+    }
+    .wizard-meta {
+        color: var(--red);
+        font-size: 0.74rem;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        margin-bottom: 0.5rem;
+    }
+    .wizard-title {
+        margin: 0;
+        font-size: clamp(1.55rem, 2.2vw, 2.2rem);
+        line-height: 1.12;
+        font-weight: 700;
+    }
+    .wizard-subtitle {
+        margin: 0.45rem 0 0.95rem;
+        color: #8f8a86;
+        font-size: 0.95rem;
+        font-weight: 600;
+    }
+    .wizard-panel {
+        display: none;
+    }
+    .wizard-panel.is-active {
+        display: block;
+    }
+
+    .options-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.75rem;
+    }
+    .options-grid.options-grid-3 {
+        grid-template-columns: repeat(3, minmax(0, 210px));
+        justify-content: center;
+    }
+
+    .option-radio { display: none; }
+    .option-label {
+        display: block;
+        padding: 1.35rem 1rem;
+        background: rgba(255, 255, 255, 0.6);
+        border: 1px solid rgba(212, 43, 43, 0.15);
+        border-radius: 18px;
+        color: #6f6966;
+        font-size: 1.02rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    .option-label.with-emoji {
+        min-height: 5.5rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 0.4rem;
+        padding: 0.85rem 0.75rem;
+    }
+    .option-emoji {
+        font-size: 1.2rem;
+        line-height: 1;
+    }
+
+    .option-radio:checked + .option-label {
+        background: var(--red);
+        color: white;
+        border-color: var(--red);
+        box-shadow: 0 4px 12px rgba(212, 43, 43, 0.3);
+        transform: translateY(-1px);
+    }
+    
+    .option-label:hover { background: rgba(212, 43, 43, 0.05); }
+    .option-radio:checked + .option-label:hover { background: #b82020; }
+
+    /* Price Range Toggles */
+    .price-toggles { display: flex; gap: 0.65rem; justify-content: space-between; }
+    .price-toggles .option-label {
+        flex: 1;
+        min-height: 0;
+        padding: 0.78rem 0;
+        font-size: 1.02rem;
+        letter-spacing: 0;
+    }
+
+    /* Save Button UI Improved */
+    .action-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 0.9rem;
+        padding-top: 0.85rem;
+        border-top: 1px solid rgba(212,43,43,0.12);
+    }
+    
+    .save-button {
+        padding: 0.75rem 2.1rem;
+        background-color: var(--red);
+        color: white;
+        border: none;
+        border-radius: 999px;
+        font-size: 1.05rem;
+        font-weight: 600;
+        cursor: pointer;
+        box-shadow: 0 4px 16px rgba(212, 43, 43, 0.3);
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+    
+    .save-button:hover { 
+        transform: translateY(-2px); 
+        background-color: #b82020;
+        box-shadow: 0 6px 20px rgba(212, 43, 43, 0.4); 
+    }
+    .save-button:active {
+        transform: translateY(0);
+    }
+    
+    /* Stats grid */
+    .ghost-btn {
+        padding: 0.68rem 1.2rem;
+        border-radius: 999px;
+        border: 1px solid rgba(212,43,43,0.2);
+        background: rgba(255,255,255,0.8);
+        color: #8f8a86;
+        font-size: 0.92rem;
+        font-weight: 700;
+        cursor: pointer;
+    }
+    .location-select {
+        width: 100%;
+        padding: 0.95rem 1rem;
+        background: rgba(255,255,255,0.8);
+        border: 1px solid rgba(212,43,43,0.2);
+        border-radius: 14px;
+        color: #333;
+        font-size: 1rem;
+        font-family: var(--font-sans);
+        outline: none;
+        box-sizing: border-box;
+    }
+    .location-select:focus {
+        border-color: var(--red);
+        box-shadow: 0 0 0 3px rgba(212,43,43,0.1);
+    }
+
+    @media (max-width: 980px) {
+        .wizard-card { padding: 1.25rem; }
+        .wizard-progress { gap: 0.4rem; }
+        .wizard-label { font-size: 0.66rem; letter-spacing: 0.08em; }
+        .wizard-line { display: none; }
+        .options-grid.options-grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .action-bar { flex-wrap: wrap; gap: 0.75rem; }
+        .save-button { width: 100%; }
+    }
+    @media (max-width: 640px) {
+        .profile-container { padding: 4.5rem 1rem 1.25rem; }
+        .profile-header { padding: 1rem; gap: 0.8rem; }
+        .options-grid { grid-template-columns: 1fr; }
+        .options-grid.options-grid-3 { grid-template-columns: 1fr; }
+    }
+    
+    .status-toast {
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        background: var(--red);
+        color: white;
+        padding: 1rem 2rem;
+        border-radius: 16px;
+        font-weight: 600;
+        box-shadow: 0 8px 24px rgba(212, 43, 43, 0.4);
+        transform: translateY(100px);
+        opacity: 0;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .status-toast.show {
+        transform: translateY(0);
+        opacity: 1;
+    }
+</style>
+
+<div class="profile-page-wrapper">
+    <div class="dashboard-orbs">
+        <div class="orb-1"></div>
+        <div class="orb-2"></div>
+        <div class="orb-3"></div>
+    </div>
+
+    {% include 'nomz/components/premium_nav.html' %}
+
+
+    <div class="profile-container">
+        <!-- Identity Header -->
+        <div class="glass-card profile-header">
+            <div class="profile-avatar-placeholder">
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </div>
+            <div class="profile-info">
+                <h2>{% if user.is_authenticated %}{{ user.username }}{% else %}Guest User{% endif %}</h2>
+                <p>{% if user.is_authenticated %}{{ user.email }}{% endif %}</p>
+            </div>
+            <div class="header-actions">
+                <button class="edit-profile-btn" onclick="openEditModal()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    Edit Profile
+                </button>
+            </div>
+        </div>
+
+        <form id="pref-form" style="display: flex; flex-direction: column; gap: 1rem;">
+            <div class="wizard-progress">
+                <div class="wizard-step is-active" id="wizardStep1">
+                    <span class="wizard-dot">1</span>
+                    <span class="wizard-label">Cuisines</span>
+                    <span class="wizard-line"></span>
+                </div>
+                <div class="wizard-step" id="wizardStep2">
+                    <span class="wizard-dot">2</span>
+                    <span class="wizard-label">Dietary</span>
+                    <span class="wizard-line"></span>
+                </div>
+                <div class="wizard-step" id="wizardStep3">
+                    <span class="wizard-dot">3</span>
+                    <span class="wizard-label">Price &amp; Location</span>
+                </div>
+            </div>
+
+            <div class="glass-card wizard-card">
+                <section class="wizard-panel is-active" id="wizardPanel1">
+                    <div class="wizard-meta">Step 1 of 3</div>
+                    <h3 class="wizard-title">Pick your favorite cuisines</h3>
+                    <p class="wizard-subtitle">Choose as many cuisines as you enjoy.</p>
+                    <div id="cuisines" class="options-grid options-grid-3"></div>
+                </section>
+
+                <section class="wizard-panel" id="wizardPanel2">
+                    <div class="wizard-meta">Step 2 of 3</div>
+                    <h3 class="wizard-title">Any dietary preferences?</h3>
+                    <p class="wizard-subtitle">We'll use this to improve your recommendations.</p>
+                    <div id="dietary" class="options-grid options-grid-3"></div>
+                </section>
+
+                <section class="wizard-panel" id="wizardPanel3">
+                    <div class="wizard-meta">Step 3 of 3</div>
+                    <h3 class="wizard-title">Set your price and area</h3>
+                    <p class="wizard-subtitle">Finish your profile with budget and borough.</p>
+                    <div style="display:grid;grid-template-columns:1fr;gap:1rem;">
+                        <div>
+                            <h4 class="card-title" style="margin-bottom:0.65rem;">Price</h4>
+                            <div class="price-toggles" id="price-container">
+                                <input type="radio" name="price" id="p1" value="$" class="option-radio">
+                                <label for="p1" class="option-label">$</label>
+                                
+                                <input type="radio" name="price" id="p2" value="$$" class="option-radio">
+                                <label for="p2" class="option-label">$$</label>
+                                
+                                <input type="radio" name="price" id="p3" value="$$$" class="option-radio">
+                                <label for="p3" class="option-label">$$$</label>
+                                
+                                <input type="radio" name="price" id="p4" value="$$$$" class="option-radio">
+                                <label for="p4" class="option-label">$$$$</label>
+                            </div>
+                        </div>
+                        <div>
+                            <h4 class="card-title" style="margin-bottom:0.65rem;">Preferred Location</h4>
+                            <select id="neighborhood-input" class="location-select">
+                                <option value="">Select a borough</option>
+                                <option value="Manhattan">Manhattan</option>
+                                <option value="Brooklyn">Brooklyn</option>
+                                <option value="Queens">Queens</option>
+                                <option value="Bronx">Bronx</option>
+                                <option value="Staten Island">Staten Island</option>
+                            </select>
+                        </div>
+                    </div>
+                </section>
+
+                <div class="action-bar">
+                    <button type="button" class="ghost-btn" id="wizardBackBtn" onclick="goToPreviousStep()" style="visibility:hidden;">&larr; Back</button>
+                    <button type="button" class="save-button" id="wizardNextBtn" onclick="goToNextStep()">Next &rarr;</button>
+                    <button type="submit" class="save-button" id="save-btn-element" style="display:none;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                        Save Preferences
+                    </button>
+                </div>
+            </div>
+
+        </form>
+    </div>
+    
+    <div id="toast" class="status-toast">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
+        Preferences Securely Saved!
+    </div>
+
+    <!-- Edit Profile Modal -->
+    <div id="edit-modal-backdrop" onclick="closeEditModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);backdrop-filter:blur(4px);z-index:2000;"></div>
+    <div id="edit-modal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:2001;width:calc(100% - 2rem);max-width:460px;">
+        <div style="background:#fff;border-radius:24px;border:1px solid rgba(212,43,43,0.2);box-shadow:0 24px 64px rgba(0,0,0,0.16);padding:2rem;font-family:var(--font-sans);">
+
+            <!-- Header -->
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;">
+                <h3 style="margin:0;font-size:18px;font-weight:700;color:#1a1a1a;">Edit Profile</h3>
+                <button onclick="closeEditModal()" style="background:rgba(212,43,43,0.08);border:1px solid rgba(212,43,43,0.2);border-radius:10px;padding:6px 9px;cursor:pointer;color:var(--red);display:flex;align-items:center;line-height:0;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+
+            <!-- Fields 2-col grid -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.875rem;">
+
+                <!-- First Name -->
+                <div>
+                    <label style="display:block;font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">First Name</label>
+                    <input id="ep-first" type="text" placeholder="First name"
+                        style="width:100%;padding:10px 13px;border:1.5px solid rgba(212,43,43,0.2);border-radius:12px;font-size:13.5px;font-family:var(--font-sans);background:#fafafa;color:#222;box-sizing:border-box;outline:none;"
+                        onfocus="this.style.borderColor='var(--red)';this.style.background='#fff'" onblur="this.style.borderColor='rgba(212,43,43,0.2)';this.style.background='#fafafa'">
+                </div>
+
+                <!-- Last Name -->
+                <div>
+                    <label style="display:block;font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Last Name</label>
+                    <input id="ep-last" type="text" placeholder="Last name"
+                        style="width:100%;padding:10px 13px;border:1.5px solid rgba(212,43,43,0.2);border-radius:12px;font-size:13.5px;font-family:var(--font-sans);background:#fafafa;color:#222;box-sizing:border-box;outline:none;"
+                        onfocus="this.style.borderColor='var(--red)';this.style.background='#fff'" onblur="this.style.borderColor='rgba(212,43,43,0.2)';this.style.background='#fafafa'">
+                </div>
+
+                <!-- Username (full width) -->
+                <div style="grid-column:1/-1;">
+                    <label style="display:flex;align-items:center;gap:5px;font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">
+                        Username
+                        <span style="background:rgba(212,43,43,0.1);color:var(--red);font-size:9px;padding:1px 6px;border-radius:8px;font-weight:700;letter-spacing:0;text-transform:none;">must be unique</span>
+                    </label>
+                    <div style="position:relative;">
+                        <span style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:#ccc;font-size:14px;pointer-events:none;">@</span>
+                        <input id="ep-username" type="text" placeholder="your_username"
+                            style="width:100%;padding:10px 13px 10px 28px;border:1.5px solid rgba(212,43,43,0.2);border-radius:12px;font-size:13.5px;font-family:var(--font-sans);background:#fafafa;color:#222;box-sizing:border-box;outline:none;"
+                            onfocus="this.style.borderColor='var(--red)';this.style.background='#fff'" onblur="this.style.borderColor='rgba(212,43,43,0.2)';this.style.background='#fafafa'">
+                    </div>
+                </div>
+
+                <!-- Email (full width) -->
+                <div style="grid-column:1/-1;">
+                    <label style="display:block;font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Email</label>
+                    <input id="ep-email" type="email" placeholder="your@email.com"
+                        style="width:100%;padding:10px 13px;border:1.5px solid rgba(212,43,43,0.2);border-radius:12px;font-size:13.5px;font-family:var(--font-sans);background:#fafafa;color:#222;box-sizing:border-box;outline:none;"
+                        onfocus="this.style.borderColor='var(--red)';this.style.background='#fff'" onblur="this.style.borderColor='rgba(212,43,43,0.2)';this.style.background='#fafafa'">
+                </div>
+
+                <!-- Phone Number (full width) -->
+                <div style="grid-column:1/-1;">
+                    <label style="display:block;font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;">Phone Number</label>
+                    <input id="ep-phone" type="tel" placeholder="+1 (555) 000-0000"
+                        style="width:100%;padding:10px 13px;border:1.5px solid rgba(212,43,43,0.2);border-radius:12px;font-size:13.5px;font-family:var(--font-sans);background:#fafafa;color:#222;box-sizing:border-box;outline:none;"
+                        onfocus="this.style.borderColor='var(--red)';this.style.background='#fff'" onblur="this.style.borderColor='rgba(212,43,43,0.2)';this.style.background='#fafafa'">
+                </div>
+
+            </div>
+
+            <!-- Error box -->
+            <div id="ep-error" style="display:none;margin-top:0.875rem;padding:9px 13px;background:rgba(220,38,38,0.06);border:1px solid rgba(220,38,38,0.2);border-radius:10px;font-size:12.5px;color:#dc2626;"></div>
+
+            <!-- Actions -->
+            <div style="display:flex;gap:0.75rem;margin-top:1.5rem;">
+                <button onclick="closeEditModal()" style="flex:1;padding:11px;border-radius:14px;border:1px solid rgba(212,43,43,0.2);background:rgba(255,255,255,0.6);color:#888;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-sans);">Cancel</button>
+                <button id="ep-save-btn" onclick="saveEditProfile()"
+                    style="flex:2;padding:11px;border-radius:14px;border:none;background:linear-gradient(135deg,var(--red) 0%,#b82020 100%);color:#fff !important;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-sans);box-shadow:0 4px 14px rgba(212,43,43,0.35);">
+                    Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Mock data and API binding
+const cuisines = [
+    { label: 'Italian', value: 'italian', emoji: '🍝' },
+    { label: 'Chinese', value: 'chinese', emoji: '🥟' },
+    { label: 'Mexican', value: 'mexican', emoji: '🌮' },
+    { label: 'Japanese', value: 'japanese', emoji: '🍣' },
+    { label: 'American', value: 'american', emoji: '🍔' },
+    { label: 'Indian', value: 'indian', emoji: '🍛' },
+    { label: 'Thai', value: 'thai', emoji: '🍜' },
+    { label: 'French', value: 'french', emoji: '🥐' },
+];
+const dietary = [
+    { label: 'Vegetarian', value: 'Vegetarian', emoji: '🥦' },
+    { label: 'Vegan', value: 'Vegan', emoji: '🌱' },
+    { label: 'Gluten-Free', value: 'Gluten-Free', emoji: '🌾' },
+    { label: 'Halal', value: 'Halal', emoji: '☪️' },
+    { label: 'Kosher', value: 'Kosher', emoji: '✡️' },
+];
+
+let currentWizardStep = 1;
+
+document.getElementById('cuisines').innerHTML = cuisines.map(item => `
+    <input type="checkbox" id="c_${item.value}" value="${item.value}" class="option-radio cuisine-box"/>
+    <label for="c_${item.value}" class="option-label with-emoji">
+        <span class="option-emoji">${item.emoji}</span>
+        <span>${item.label}</span>
+    </label>
+`).join('');
+
+document.getElementById('dietary').innerHTML = dietary.map(item => `
+    <input type="checkbox" id="d_${item.value}" value="${item.value}" class="option-radio dietary-box"/>
+    <label for="d_${item.value}" class="option-label with-emoji">
+        <span class="option-emoji">${item.emoji}</span>
+        <span>${item.label}</span>
+    </label>
+`).join('');
+
+function setWizardStep(step) {
+    currentWizardStep = Math.max(1, Math.min(3, step));
+    [1, 2, 3].forEach((num) => {
+        const panel = document.getElementById(`wizardPanel${num}`);
+        const stepEl = document.getElementById(`wizardStep${num}`);
+        panel.classList.toggle('is-active', num === currentWizardStep);
+        stepEl.classList.toggle('is-active', num === currentWizardStep);
+        stepEl.classList.toggle('is-complete', num < currentWizardStep);
+    });
+
+    const backBtn = document.getElementById('wizardBackBtn');
+    const nextBtn = document.getElementById('wizardNextBtn');
+    const saveBtn = document.getElementById('save-btn-element');
+
+    backBtn.style.visibility = currentWizardStep === 1 ? 'hidden' : 'visible';
+    nextBtn.style.display = currentWizardStep === 3 ? 'none' : 'inline-flex';
+    saveBtn.style.display = currentWizardStep === 3 ? 'inline-flex' : 'none';
+}
+
+function goToNextStep() {
+    setWizardStep(currentWizardStep + 1);
+}
+
+function goToPreviousStep() {
+    setWizardStep(currentWizardStep - 1);
+}
+
+async function load(){
+    try {
+        const r = await apiFetch('/api/diner/preferences/');
+        const d = await r.json();
+        if(d.favorite_cuisines) {
+            d.favorite_cuisines.forEach(c => {
+                const el = document.getElementById('c_' + c);
+                if(el) el.checked = true;
+            });
+        }
+        if(d.dietary_restrictions) {
+            d.dietary_restrictions.forEach(dr => {
+                const el = document.getElementById('d_' + dr);
+                if(el) el.checked = true;
+            });
+        }
+        if(d.price_preference) {
+            const priceEl = document.querySelector(`input[name="price"][value="${d.price_preference}"]`);
+            if (priceEl) priceEl.checked = true;
+        } else {
+            document.getElementById('p2').checked = true; // default $$
+        }
+        // Load borough preference from canonical or legacy text values
+        if (d.neighborhood_preference) {
+            const normalizedNeighborhood = normalizeNeighborhood(d.neighborhood_preference);
+            document.getElementById('neighborhood-input').value = normalizedNeighborhood;
+        }
+    } catch(e) {
+        console.error("Could not load preferences", e);
+    }
+}
+
+document.getElementById('pref-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const btn = document.getElementById('save-btn-element');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = 'Saving...';
+    
+    try {
+        const fc = Array.from(document.querySelectorAll('.cuisine-box:checked')).map(i => i.value);
+        const dr = Array.from(document.querySelectorAll('.dietary-box:checked')).map(i => i.value);
+        const prElement = document.querySelector('input[name="price"]:checked');
+        const pr = prElement ? prElement.value : '$$';
+        const neighborhood = document.getElementById('neighborhood-input').value;
+        
+        const response = await apiFetch('/api/diner/preferences/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
+            body: JSON.stringify({ favorite_cuisines: fc, dietary_restrictions: dr, price_preference: pr, neighborhood_preference: neighborhood })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Bad Request: ${response.status}`);
+        }
+        
+        // Show toast
+        const toast = document.getElementById('toast');
+        toast.classList.add('show');
+        setTimeout(() => { toast.classList.remove('show'); }, 3000);
+    } catch(err) {
+        console.error("Failed to save", err);
+        alert("Failed to save. Please try again.");
+    } finally {
+        btn.innerHTML = originalText;
+    }
+});
+
+function normalizeNeighborhood(value) {
+    const raw = (value || '').toString().trim().toLowerCase();
+    if (!raw) return '';
+    if (raw === 'manhattan') return 'Manhattan';
+    if (raw === 'brooklyn') return 'Brooklyn';
+    if (raw === 'queens') return 'Queens';
+    if (raw === 'bronx' || raw === 'the bronx') return 'Bronx';
+    if (raw === 'staten island' || raw === 'staten') return 'Staten Island';
+    return '';
+}
+
+function handleLogout() {
+    apiFetch('/api/auth/logout/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() } }).then(() => { window.location.href = '/home/'; });
+}
+
+// ── Edit Profile Modal ────────────────────────────────────────────────────────
+async function openEditModal() {
+    document.getElementById('edit-modal-backdrop').style.display = 'block';
+    document.getElementById('edit-modal').style.display = 'block';
+    document.getElementById('ep-error').style.display = 'none';
+
+    try {
+        const r = await apiFetch('/api/diner/account/');
+        const d = await r.json();
+        document.getElementById('ep-first').value    = d.first_name    || '';
+        document.getElementById('ep-last').value     = d.last_name     || '';
+        document.getElementById('ep-username').value = d.username      || '';
+        document.getElementById('ep-email').value    = d.email         || '';
+        document.getElementById('ep-phone').value    = d.phone_number  || '';
+    } catch(e) {
+        console.error('Could not load account data', e);
+    }
+}
+
+function closeEditModal() {
+    document.getElementById('edit-modal-backdrop').style.display = 'none';
+    document.getElementById('edit-modal').style.display = 'none';
+}
+
+async function saveEditProfile() {
+    const btn    = document.getElementById('ep-save-btn');
+    const errBox = document.getElementById('ep-error');
+    errBox.style.display = 'none';
+
+    const first_name   = document.getElementById('ep-first').value.trim();
+    const last_name    = document.getElementById('ep-last').value.trim();
+    const username     = document.getElementById('ep-username').value.trim();
+    const email        = document.getElementById('ep-email').value.trim();
+    const phone_number = document.getElementById('ep-phone').value.trim();
+
+    if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+        errBox.textContent = 'Please enter a valid email address.';
+        errBox.style.display = 'block';
+        return;
+    }
+    if (username && !/^[\w.@+\-]+$/.test(username)) {
+        errBox.textContent = 'Username may only contain letters, digits, and @/./+/-/_.';
+        errBox.style.display = 'block';
+        return;
+    }
+
+    const origHTML = btn.innerHTML;
+    btn.innerHTML = 'Saving…';
+    btn.disabled = true;
+
+    try {
+        const r = await apiFetch('/api/diner/account/', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
+            body: JSON.stringify({ first_name, last_name, username, email, phone_number })
+        });
+
+        if (r.status === 409) {
+            const d = await r.json();
+            errBox.textContent = d.error || 'That username is already taken.';
+            errBox.style.display = 'block';
+            return;
+        }
+        if (!r.ok) { throw new Error(`HTTP ${r.status}`); }
+
+        const data = await r.json();
+
+        // Live-update the profile card
+        if (email) {
+            const emailEl = document.querySelector('.profile-info p');
+            if (emailEl) emailEl.textContent = email;
+        }
+        if (data.username) {
+            const nameEl = document.querySelector('.profile-info h2');
+            if (nameEl) nameEl.textContent = data.username;
+        }
+
+        closeEditModal();
+        const toast = document.getElementById('toast');
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 3000);
+    } catch(err) {
+        errBox.textContent = 'Failed to save. Please try again.';
+        errBox.style.display = 'block';
+        console.error(err);
+    } finally {
+        btn.innerHTML = origHTML;
+        btn.disabled = false;
+    }
+}
+
+// Close modal on Escape key
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeEditModal(); });
+
+function getCSRFToken() {
+    const cookieValue = document.cookie.split('; ').find(row => row.startsWith('csrftoken='));
+    return cookieValue ? cookieValue.split('=')[1] : null;
+}
+
+setWizardStep(1);
+load();
+</script>
+{% endblock %}

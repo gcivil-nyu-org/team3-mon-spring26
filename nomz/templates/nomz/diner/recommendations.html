@@ -1,0 +1,114 @@
+{% extends 'nomz/base.html' %}
+{% block main_layout %}
+<style>
+    /* Hide the outer base template's navbar and footer */
+    nav.navbar { display: none !important; }
+    body > footer { display: none !important; }
+
+    /* Modern Recommendations Styles */
+    body {
+        background: linear-gradient(135deg, var(--paper) 0%, rgba(200,169,110,0.1) 50%, var(--paper) 100%);
+        font-family: var(--font-sans);
+        position: relative;
+        overflow-x: hidden;
+    }
+
+    /* Floating Gradient Orbs */
+    .gradient-orb {
+        position: fixed;
+        border-radius: 50%;
+        filter: blur(80px);
+        opacity: 0.3;
+        pointer-events: none;
+        z-index: 0;
+        animation: float 20s infinite ease-in-out;
+    }
+
+    .gradient-orb-1 { width: 400px; height: 400px; background: radial-gradient(circle, rgba(212, 43, 43, 0.4) 0%, transparent 70%); top: -100px; right: -100px; animation-delay: 0s; }
+    .gradient-orb-2 { width: 350px; height: 350px; background: radial-gradient(circle, rgba(255, 183, 77, 0.3) 0%, transparent 70%); bottom: 100px; left: -100px; animation-delay: 7s; }
+    .gradient-orb-3 { width: 300px; height: 300px; background: radial-gradient(circle, rgba(212, 43, 43, 0.25) 0%, transparent 70%); top: 50%; right: 10%; animation-delay: 14s; }
+
+    @keyframes float {
+        0%, 100% { transform: translate(0, 0) scale(1); }
+        33% { transform: translate(30px, -50px) scale(1.1); }
+        66% { transform: translate(-20px, 30px) scale(0.9); }
+    }
+
+
+    /* Main Content */
+    .search-main { flex: 1; padding: 2rem; max-width: 80rem; margin: 0 auto; width: 100%; position: relative; z-index: 1; min-height: 80vh; }
+    .search-title { font-size: 2.5rem; margin-bottom: 1rem; font-family: var(--font-sans); color: var(--red); font-weight: 700; text-align: center; }
+    .search-subtitle { font-size: 1.125rem; text-align: center; color: #666; margin-bottom: 3rem; }
+    
+    /* Result Cards */
+    .restaurant-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem; }
+    
+    .restaurant-card {
+        border-radius: 24px; padding: 2rem; background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(16px); border: 1px solid rgba(212, 43, 43, 0.15);
+        font-family: var(--font-sans); cursor: pointer; transition: all 0.4s ease;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08); text-align: center; display: flex; flex-direction: column; justify-content: center;
+    }
+    .restaurant-card:hover { transform: translateY(-8px) scale(1.02); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12); border-color: rgba(212, 43, 43, 0.3); }
+    .restaurant-card h3 { color: #333; margin-bottom: 0.5rem; font-size: 1.25rem; font-weight: 700; }
+    .restaurant-card p { color: #666; margin-bottom: 0.75rem; font-size: 0.9rem; }
+    .restaurant-card .rating { font-weight: 600; color: var(--red); background: rgba(212, 43, 43, 0.1); padding: 0.25rem 0.75rem; border-radius: 12px; display: inline-block; margin: 0 auto; }
+
+    /* Footer */
+    .search-footer { width: 100%; padding: 2rem; text-align: center; background: rgba(255, 255, 255, 0.5); backdrop-filter: blur(12px); border-top: 1px solid rgba(212, 43, 43, 0.1); position: relative; z-index: 1; }
+    .footer-text { font-size: 0.75rem; color: #999; margin: 0; font-family: var(--font-sans); }
+
+    .empty-state { text-align: center; padding: 3rem; background: rgba(255, 255, 255, 0.5); border-radius: 24px; backdrop-filter: blur(8px); }
+    .empty-state h3 { font-size: 1.5rem; color: var(--red); margin-bottom: 0.5rem; }
+    .empty-state p { color: #666; margin-bottom: 1.5rem; }
+    .empty-state a { display: inline-block; padding: 0.75rem 2rem; border-radius: 16px; background-color: var(--red); color: white !important; text-decoration: none; font-weight: 600; transition: all 0.3s ease; box-shadow: 0 4px 12px rgba(212, 43, 43, 0.25); }
+    .empty-state a:hover { background-color: #b82020; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(212, 43, 43, 0.35); }
+</style>
+
+<div style="min-height: 100vh; display: flex; flex-direction: column; position: relative;">
+    <!-- Floating Gradient Orbs -->
+    <div class="gradient-orb gradient-orb-1"></div>
+    <div class="gradient-orb gradient-orb-2"></div>
+    <div class="gradient-orb gradient-orb-3"></div>
+
+    {% include 'nomz/components/premium_nav.html' %}
+
+    <!-- Main Content -->
+    <main class="search-main">
+        <h2 class="search-title">Recommended for You</h2>
+        <p class="search-subtitle">Hand-picked restaurants based on your preferences</p>
+        <div id="recs" class="restaurant-grid"></div>
+    </main>
+
+    <!-- Footer -->
+    <footer style="border-top:2px solid var(--ink);padding:20px 6vw;display:flex;justify-content:space-between;align-items:center;background:var(--paper);">
+        <span style="font-family:var(--font-serif);font-style:italic;font-size:13px;color:var(--tan);">Good food, always.</span>
+        <span style="font-size:10px;letter-spacing:0.3em;text-transform:uppercase;color:var(--mid);">nomz</span>
+    </footer>
+</div>
+<script>
+async function load(){
+    const r=await apiFetch('/api/recommendations/');
+    const d=await r.json();
+    if(d.requires_preferences) {
+        document.getElementById('recs').innerHTML='<div class="empty-state"><h3>Set your preferences first!</h3><p>We need to know what you like before we can recommend anything.</p><a href="/profile/">Go to Profile</a></div>';
+        document.getElementById('recs').classList.remove('restaurant-grid');
+        return;
+    }
+    if(d.restaurants && d.restaurants.length > 0) {
+        document.getElementById('recs').innerHTML=d.restaurants.map(rest=>`<div class="restaurant-card" onclick="location.href='/restaurant/${rest.id}/'"><h3>${rest.name}</h3><p>${rest.cuisine}</p><p class="rating">Score: ${Number(rest.composite_score || rest.average_rating || 0).toFixed(1)}</p></div>`).join('');
+    } else {
+        document.getElementById('recs').innerHTML='<div class="empty-state"><h3>No recommendations yet!</h3><p>Try broadening your preferences or check back later.</p></div>';
+        document.getElementById('recs').classList.remove('restaurant-grid');
+    }
+}
+load();
+function handleLogout() {
+    apiFetch('/api/auth/logout/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() } }).then(() => { window.location.href = '/home/'; });
+}
+function getCSRFToken() {
+    const cookieValue = document.cookie.split('; ').find(row => row.startsWith('csrftoken='));
+    return cookieValue ? cookieValue.split('=')[1] : null;
+}
+</script>
+{% endblock %}

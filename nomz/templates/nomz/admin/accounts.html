@@ -1,0 +1,268 @@
+{% extends 'nomz/base.html' %}
+{% block main_layout %}
+{% include 'nomz/components/premium_design.html' %}
+<style>
+    nav.navbar, body > footer, .nav-icons { display: none !important; }
+    .ad-container { max-width: 1100px; margin: 0 auto; padding: 2rem; position: relative; z-index: 10; }
+    
+    .ad-header { margin-bottom: 2.5rem; }
+    .ad-page-title { font-family: var(--font-sans); font-size: 28px; font-weight: 600; color: var(--red); margin: 0 0 0.5rem 0; text-transform: capitalize; }
+    .ad-page-subtitle { color: #8a7e75; font-size: 14px; margin: 0; }
+    
+    .ad-table-header { 
+        display: flex; align-items: center; gap: 1.5rem; padding: 0 1.25rem 1rem 1.25rem;
+        border-bottom: 1px solid rgba(212, 43, 43, 0.1); margin-bottom: 1rem;
+        font-size: 11px; font-weight: 700; color: #8a7e75; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+
+    .acc-card { 
+        background: white; border-radius: 12px; padding: 0.75rem 1.25rem; margin-bottom: 0.5rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.02); display: flex; align-items: center; gap: 1.5rem;
+        transition: all 0.2s; border: 1px solid transparent;
+    }
+    .acc-card:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+
+    .col-item { display: flex; align-items: center; white-space: nowrap; flex-shrink: 0; }
+    .col-value { font-size: 14px; color: #333; font-weight: 500; }
+
+    /* Optimized widths */
+    .col-user { width: 150px; }
+    .col-email { width: 220px; }
+    .col-biz { width: 180px; }
+    .col-date { width: 220px; }
+    .col-actions { flex-grow: 1; display: flex; justify-content: flex-end; }
+
+    .ad-btn { padding: 4px 16px; border-radius: 8px; font-weight: 800; cursor: pointer; transition: all 0.2s; border: none; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .revoke-btn { background: #fee2e2; color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.1); }
+    .revoke-btn:hover { background: #fecaca; }
+    .approve-btn { background: #10b981; color: white; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2); }
+    .approve-btn:hover { background: #059669; transform: translateY(-1px); }
+
+    .empty-card { background: white; border-radius: 16px; padding: 5rem 2rem; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+    
+    /* Modal Styles */
+    .ad-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 1000; }
+    .ad-modal { background: white; border-radius: 16px; width: 440px; padding: 2rem; box-shadow: 0 10px 40px rgba(0,0,0,0.1); position: relative; animation: modalPop 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    @keyframes modalPop { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .ad-modal-title { font-family: var(--font-sans); font-size: 20px; font-weight: 600; color: var(--red); margin: 0 0 1.5rem 0; }
+    
+    .modal-group { margin-bottom: 1.5rem; }
+    .modal-label { display: block; font-size: 13px; font-weight: 600; color: #333; margin-bottom: 0.75rem; }
+    
+    .modal-actions { display: flex; gap: 12px; margin-top: 1rem; }
+    .modal-btn { flex: 1; padding: 10px; border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.2s; border: none; }
+    .modal-btn-cancel { background: white; border: 1.5px solid var(--red); color: var(--red); }
+    .modal-btn-cancel:hover { background: var(--paper); }
+    .modal-btn-submit { background: var(--red); color: white; box-shadow: 0 4px 12px rgba(212, 43, 43, 0.2); }
+    .modal-btn-submit:hover { background: #b82020; transform: translateY(-1px); }
+    .modal-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+</style>
+
+{% include 'nomz/components/premium_nav.html' %}
+
+<div class="ad-container">
+    <div class="ad-header">
+        <h1 class="ad-page-title">{{ status }} restaurant accounts</h1>
+        {% if status == 'approved' %}
+            <p class="ad-page-subtitle">Verified businesses live on the platform. You can revoke approval to restrict an account.</p>
+        {% else %}
+            <p class="ad-page-subtitle">Denied or revoked businesses. You can approve again to restore access.</p>
+        {% endif %}
+    </div>
+
+    <p class="found-count" id="account-count">0 account(s) found</p>
+    
+    <div class="ad-table-header">
+        <div class="col-user">Username</div>
+        <div class="col-email">Email</div>
+        <div class="col-biz">Business</div>
+        <div class="col-date">Joined</div>
+        <div class="col-actions">Action</div>
+    </div>
+
+    <div id="accounts">
+        <p style="text-align: center; color: #999; padding: 3rem;">Loading business directory...</p>
+    </div>
+</div>
+
+<!-- Revocation Modal -->
+<div id="revokeModal" class="ad-modal-overlay">
+    <div class="ad-modal">
+        <h3 class="ad-modal-title">Revoke Approval</h3>
+        <div class="modal-group">
+            <p style="font-size: 14px; color: #444; line-height: 1.5; margin: 0;">
+                Are you sure you want to revoke approval for this business? They will be treated as rejected and restricted from the platform.
+            </p>
+        </div>
+        <div class="modal-actions">
+            <button class="modal-btn modal-btn-cancel" onclick="closeRevokeModal()">Cancel</button>
+            <button id="modalRevokeSubmit" class="modal-btn modal-btn-submit" onclick="submitRevoke()">Revoke</button>
+        </div>
+    </div>
+</div>
+
+<!-- Re-Approval Modal -->
+<div id="approveModal" class="ad-modal-overlay">
+    <div class="ad-modal">
+        <h3 class="ad-modal-title">Approve Account</h3>
+        <div class="modal-group">
+            <p style="font-size: 14px; color: #444; line-height: 1.5; margin: 0;">
+                Approve this account again? They will be marked approved and restored to the active business directory.
+            </p>
+        </div>
+        <div class="modal-actions">
+            <button class="modal-btn modal-btn-cancel" onclick="closeApproveModal()">Cancel</button>
+            <button id="modalApproveSubmit" class="modal-btn modal-btn-submit" onclick="submitApprove()">Approve</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function apiCall(path, options = {}) {
+    const getCookie = (name) => {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    };
+    const headers = {
+        'X-CSRFToken': getCookie('csrftoken'),
+        'Content-Type': 'application/json',
+        ...options.headers
+    };
+    return fetch(path, { ...options, headers });
+}
+
+async function load(){
+    const container = document.getElementById('accounts');
+    const endpoint = '{{status}}' == 'approved' ? '/api/admin/approved-restaurants/' : '/api/admin/rejected-restaurants/';
+    
+    try {
+        const r = await apiCall(endpoint);
+        if (!r.ok) throw new Error('Unauthorized');
+        
+        const d = await r.json();
+        const rests = d.results || [];
+        document.getElementById('account-count').textContent = `${rests.length} ${'{{status}}'} business account(s) found`;
+
+        if (rests.length === 0) {
+            container.innerHTML = `
+                <div class="empty-card">
+                    <p style="color: #8a7e75; font-size: 16px; margin: 0;">No ${'{{status}}'} business accounts found.</p>
+                </div>
+            `;
+            return;
+        }
+        
+        container.innerHTML = rests.map(rest => {
+            const joined = rest.joined ? new Date(rest.joined) : null;
+            const dateStr = joined ? `${joined.toLocaleDateString()}, ${joined.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })}` : '—';
+            
+            const btnText = '{{status}}' === 'approved' ? 'Revoke approval' : 'Approve';
+            const btnClass = '{{status}}' === 'approved' ? 'revoke-btn' : 'approve-btn';
+            const btnFunc = '{{status}}' === 'approved' ? `revoke(${rest.id})` : `approve(${rest.id})`;
+
+            return `
+                <div class="acc-card">
+                    <div class="col-item col-user">
+                        <span class="col-value">${rest.username}</span>
+                    </div>
+
+                    <div class="col-item col-email">
+                        <span class="col-value">${rest.email || '—'}</span>
+                    </div>
+
+                    <div class="col-item col-biz">
+                        <span class="col-value">${rest.name || '—'}</span>
+                    </div>
+
+                    <div class="col-item col-date">
+                        <span class="col-value">${dateStr}</span>
+                    </div>
+
+                    <div class="col-item col-actions">
+                        <button onclick="${btnFunc}" class="ad-btn ${btnClass}">${btnText}</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (err) {
+        container.innerHTML = `<div style="text-align: center; color: #dc2626; padding: 3rem;">Error: ${err.message}</div>`;
+    }
+}
+
+let currentRevokeId = null;
+let currentApproveId = null;
+
+window.closeRevokeModal = () => {
+    document.getElementById('revokeModal').style.display = 'none';
+    currentRevokeId = null;
+};
+
+window.revoke = (id) => {
+    currentRevokeId = id;
+    document.getElementById('revokeModal').style.display = 'flex';
+};
+
+window.submitRevoke = async () => {
+    if (!currentRevokeId) return;
+    const btn = document.getElementById('modalRevokeSubmit');
+    btn.disabled = true; btn.textContent = 'Revoking...';
+    try {
+        const r = await apiCall(`/api/admin/reject/${currentRevokeId}/`, {
+            method: 'POST',
+            body: JSON.stringify({ notes: "Revoked by administrator via modal." })
+        });
+        if (!r.ok) {
+            const d = await r.json();
+            throw new Error(d.error || 'Revocation failed');
+        }
+        closeRevokeModal();
+        await load();
+    } catch (err) { alert("Error: " + err.message); }
+    finally { if (btn) { btn.disabled = false; btn.textContent = 'Revoke'; } }
+};
+
+window.closeApproveModal = () => {
+    document.getElementById('approveModal').style.display = 'none';
+    currentApproveId = null;
+};
+
+window.approve = (id) => {
+    currentApproveId = id;
+    document.getElementById('approveModal').style.display = 'flex';
+};
+
+window.submitApprove = async () => {
+    if (!currentApproveId) return;
+    const btn = document.getElementById('modalApproveSubmit');
+    btn.disabled = true; btn.textContent = 'Approving...';
+    try {
+        const r = await apiCall(`/api/admin/approve/${currentApproveId}/`, {
+            method: 'POST',
+            body: JSON.stringify({ notes: "Restored by administrator via modal." })
+        });
+        if (!r.ok) {
+            const d = await r.json();
+            throw new Error(d.error || 'Approval failed');
+        }
+        closeApproveModal();
+        await load();
+    } catch (err) { alert("Error: " + err.message); }
+    finally { if (btn) { btn.disabled = false; btn.textContent = 'Approve'; } }
+};
+
+load();
+</script>
+{% endblock %}

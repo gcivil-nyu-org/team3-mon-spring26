@@ -1,0 +1,38 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="nomz — discover and review the best restaurants">
+    <title>{% block title %}nomz{% endblock %}</title>
+    <link rel="icon" type="image/x-icon" href="{% static 'nomz/favicon.ico' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,900;1,400&family=Barlow+Condensed:wght@300;400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'nomz/css/main.css' %}">
+    <script src="{% static 'nomz/js/api.js' %}"></script>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div id="root" style="display:none;" aria-hidden="true"></div>
+
+    {% if not hide_navbar %}
+        {% include 'nomz/components/navbar.html' %}
+    {% endif %}
+
+    <div id="error-message"   class="error-banner hidden"   style="display:none;"></div>
+    <div id="success-message" class="success-banner hidden" style="display:none;"></div>
+    <div id="info-message"    class="info-banner hidden"    style="display:none;"></div>
+
+    <main id="main-content">
+        {% block main_layout %}
+            {% block content %}{% endblock %}
+        {% endblock %}
+    </main>
+
+    {% if not hide_footer %}
+        {% include 'nomz/components/footer.html' %}
+    {% endif %}
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

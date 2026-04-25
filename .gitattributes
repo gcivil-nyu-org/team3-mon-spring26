@@ -1,0 +1,4 @@
+# Keep deployment-critical scripts in Unix format for EB Linux instances.
+*.sh text eol=lf
+Procfile text eol=lf
+.ebextensions/*.config text eol=lf

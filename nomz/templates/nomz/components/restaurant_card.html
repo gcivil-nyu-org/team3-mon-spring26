@@ -1,0 +1,24 @@
+<!-- Restaurant Card Component -->
+<!-- Usage: {% include 'nomz/components/restaurant_card.html' with restaurant=restaurant %} -->
+
+<div class="card restaurant-card" onclick="window.location.href='/restaurant/{{ restaurant.id }}/'">
+    {% if restaurant.primary_photo_url %}
+        <img src="{{ restaurant.primary_photo_url }}" alt="{{ restaurant.name }}" class="card-image">
+    {% else %}
+        <div class="card-image" style="background-color: var(--color-muted); display: flex; align-items: center; justify-content: center; color: var(--color-muted-foreground);">
+            No Image
+        </div>
+    {% endif %}
+
+    <h3>{{ restaurant.name }}</h3>
+
+    <p class="cuisine">{{ restaurant.cuisine }}{% if restaurant.neighborhood %} • {{ restaurant.neighborhood }}{% endif %}</p>
+
+    {% if restaurant.average_rating %}
+        <p class="rating"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="#eab308" stroke="none" style="display:inline;vertical-align:middle;margin-right:3px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> {{ restaurant.average_rating|floatformat:1 }} ({{ restaurant.review_count }} reviews)</p>
+    {% else %}
+        <p class="rating text-muted">No reviews yet</p>
+    {% endif %}
+
+    <p class="price">{{ restaurant.price_label|default:"$$" }}</p>
+</div>

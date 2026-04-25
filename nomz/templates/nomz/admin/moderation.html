@@ -1,0 +1,161 @@
+{% extends 'nomz/base.html' %}
+{% block main_layout %}
+{% include 'nomz/components/premium_design.html' %}
+<style>
+    nav.navbar, body > footer, .nav-icons { display: none !important; }
+    .ad-container { max-width: 1100px; margin: 0 auto; padding: 2rem; position: relative; z-index: 10; }
+    
+    .ad-header { margin-bottom: 2.5rem; }
+    .ad-page-title { font-family: var(--font-sans); font-size: 28px; font-weight: 600; color: var(--red); margin: 0 0 0.5rem 0; }
+    .ad-page-subtitle { color: #8a7e75; font-size: 14px; margin: 0; }
+    
+    .ad-table-header { 
+        display: flex; align-items: center; gap: 1.5rem; padding: 0 1.25rem 1rem 1.25rem;
+        border-bottom: 1px solid rgba(212, 43, 43, 0.1); margin-bottom: 1rem;
+        font-size: 11px; font-weight: 700; color: #8a7e75; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+
+    .mod-card { 
+        background: white; border-radius: 12px; padding: 0.75rem 1.25rem; margin-bottom: 0.5rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.02); display: flex; align-items: center; gap: 1.5rem;
+        transition: all 0.2s; border: 1px solid transparent;
+    }
+    .mod-card:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+
+    .col-item { display: flex; align-items: center; white-space: nowrap; flex-shrink: 0; }
+    .col-value { font-size: 14px; color: #333; font-weight: 500; }
+
+    .role-badge { font-size: 10px; font-weight: 700; color: var(--red); background: rgba(212, 43, 43, 0.1); padding: 2px 6px; border-radius: 4px; text-transform: uppercase; }
+
+    /* Optimized widths */
+    .col-type { width: 150px; }
+    .col-reason { flex-grow: 1; overflow: hidden; text-overflow: ellipsis; max-width: 400px; }
+    .col-reporter { width: 150px; }
+    .col-actions { display: flex; gap: 10px; flex-shrink: 0; }
+
+    .ad-btn { padding: 4px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; border: none; font-size: 12px; }
+    .ad-btn-approve { background: var(--red); color: white; }
+    .ad-btn-delete { background: rgba(220, 38, 38, 0.1); color: #dc2626; border: 1px solid rgba(220, 38, 38, 0.2); }
+
+    .empty-card { background: white; border-radius: 16px; padding: 5rem 2rem; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+
+    .filter-bar { display: flex; gap: 0.75rem; margin-bottom: 1rem; }
+    .filter-btn { padding: 8px 24px; border-radius: 12px; border: 1px solid rgba(212, 43, 43, 0.2); background: white; color: #8a7e75; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+    .filter-btn.active { background: var(--red); color: white; border-color: var(--red); }
+    .found-count { font-size: 13px; color: #8a7e75; margin-bottom: 1.5rem; }
+</style>
+
+{% include 'nomz/components/premium_nav.html' %}
+
+<div class="ad-container">
+    <div class="ad-header">
+        <h1 class="ad-page-title">Content Moderation</h1>
+        <p class="ad-page-subtitle">Moderate reported reviews, photos, and user content.</p>
+    </div>
+
+    <p class="found-count" id="report-count">0 reports found</p>
+    
+    <div class="ad-table-header">
+        <div class="col-type">Content Type</div>
+        <div class="col-reason">Reason</div>
+        <div class="col-reporter">Reporter</div>
+        <div class="col-actions">Action</div>
+    </div>
+    
+    <div id="reports">
+        <p style="text-align: center; color: #999; padding: 3rem;">Loading moderation queue...</p>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function apiCall(path, options = {}) {
+    const getCookie = (name) => {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    };
+    const headers = {
+        'X-CSRFToken': getCookie('csrftoken'),
+        'Content-Type': 'application/json',
+        ...options.headers
+    };
+    return fetch(path, { ...options, headers });
+}
+
+async function load(){
+    const container = document.getElementById('reports');
+    const countText = document.getElementById('report-count');
+
+    try {
+        const r = await apiCall('/api/admin/moderation/');
+        if (!r.ok) throw new Error('Unauthorized');
+        
+        const d = await r.json();
+        const reports = d.pending || [];
+        countText.textContent = `${reports.length} report(s) awaiting review`;
+
+        if (reports.length === 0) {
+            container.innerHTML = `
+                <div class="empty-card">
+                    <p style="color: #8a7e75; font-size: 16px; margin: 0;">No pending reports to review. All clear!</p>
+                </div>
+            `;
+            return;
+        }
+        
+        container.innerHTML = reports.map(rep => `
+            <div class="mod-card">
+                <div class="col-item col-type">
+                    <span class="col-value">${rep.content_type}</span>
+                </div>
+
+                <div class="col-item col-reason">
+                    <span class="col-value">${rep.reason || '—'}</span>
+                </div>
+
+                <div class="col-item col-reporter">
+                    <span class="col-value">${rep.reporter_username}</span>
+                </div>
+
+                <div class="col-item col-actions">
+                    <button onclick="resolve(${rep.id}, 'approve', this)" class="ad-btn ad-btn-approve">Approve</button>
+                    <button onclick="resolve(${rep.id}, 'delete', this)" class="ad-btn ad-btn-delete">Delete</button>
+                </div>
+            </div>
+        `).join('');
+    } catch (err) {
+        container.innerHTML = `<div style="text-align: center; color: #dc2626; padding: 3rem;">Error: ${err.message}</div>`;
+    }
+}
+
+async function resolve(id, action, btn){
+    if(!confirm(`Are you sure you want to ${action} this content?`)) return;
+    btn.disabled = true; btn.textContent = '...';
+    try {
+        await apiCall(`/api/admin/moderation/reports/${id}/resolve/`, {
+            method:'POST',
+            body:JSON.stringify({action})
+        });
+        load();
+    } catch (err) {
+        alert('Action failed: ' + err.message);
+        btn.disabled = false; btn.textContent = action.charAt(0).toUpperCase() + action.slice(1);
+    }
+}
+
+setInterval(load, 10000);
+load();
+</script>
+{% endblock %}

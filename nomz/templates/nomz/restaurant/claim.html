@@ -1,0 +1,594 @@
+{% extends 'nomz/base.html' %}
+{% block title %}Claim Your Restaurant – nomz{% endblock %}
+{% block main_layout %}
+{% include 'nomz/components/premium_design.html' %}
+<style>
+    /* ── Hide the base template navbar & footer ──────────────────────── */
+    nav.navbar {
+        display: none !important;
+    }
+
+    body>footer {
+        display: none !important;
+    }
+
+    @keyframes float {
+        0%, 100% { transform: translate(0, 0) scale(1); }
+        50% { transform: translate(-20px, 20px) scale(1.05); }
+    }
+
+    .claim-page-wrapper {
+        min-height: 100vh;
+        background: var(--premium-bg);
+        font-family: var(--font-sans);
+        position: relative;
+        overflow-x: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* Floating Gradient Orbs */
+    .gradient-orb {
+        position: fixed;
+        border-radius: 50%;
+        filter: blur(80px);
+        opacity: 0.3;
+        pointer-events: none;
+        z-index: 0;
+        animation: float 20s infinite ease-in-out;
+    }
+
+    .orb-1 {
+        width: 500px;
+        height: 500px;
+        background: radial-gradient(circle, rgba(212, 43, 43, 0.3) 0%, transparent 70%);
+        top: -100px;
+        right: -100px;
+    }
+
+    .orb-2 {
+        width: 400px;
+        height: 400px;
+        background: radial-gradient(circle, rgba(255, 183, 77, 0.2) 0%, transparent 70%);
+        bottom: 100px;
+        left: -100px;
+        animation-delay: -5s;
+    }
+
+
+    /* ── Page Container ─────────────────────────────────────────────── */
+    .claim-container {
+        flex: 1;
+        max-width: 800px;
+        width: 100%;
+        margin: 0 auto;
+        padding: 3rem 2rem;
+        position: relative;
+        z-index: 10;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    /* ── Glass card ─────────────────────────────────────────────────── */
+    .glass-card {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(212, 43, 43, 0.15);
+        border-radius: 24px;
+        padding: 2.5rem;
+        box-shadow: 0 8px 32px rgba(212, 43, 43, 0.08);
+        width: 100%;
+        text-align: center;
+        transition: all 0.4s ease;
+    }
+
+    .claim-header {
+        margin-bottom: 2rem;
+    }
+
+    .claim-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #1a1a1a;
+        margin-bottom: 0.5rem;
+    }
+
+    .claim-subtitle {
+        color: #666;
+        font-size: 1.1rem;
+        line-height: 1.5;
+    }
+
+    /* ── Search Input ────────────────────────────────────────────────── */
+    .search-wrapper {
+        position: relative;
+        margin-bottom: 2rem;
+        width: 100%;
+    }
+
+    .search-input {
+        width: 100%;
+        padding: 1.25rem 1.5rem 1.25rem 3.5rem;
+        background: white;
+        border: 2px solid rgba(212, 43, 43, 0.1);
+        border-radius: 16px;
+        font-size: 1.1rem;
+        font-family: inherit;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+    }
+
+    .search-input:focus {
+        outline: none;
+        border-color: var(--red);
+        box-shadow: 0 8px 24px rgba(212, 43, 43, 0.12);
+    }
+
+    .search-icon {
+        position: absolute;
+        left: 1.25rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--red);
+        opacity: 0.6;
+    }
+
+    /* ── Results List ────────────────────────────────────────────────── */
+    .results-container {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        max-height: 400px;
+        overflow-y: auto;
+        padding-right: 0.5rem;
+        text-align: left;
+    }
+
+    .results-container::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .results-container::-webkit-scrollbar-thumb {
+        background: rgba(212, 43, 43, 0.2);
+        border-radius: 10px;
+    }
+
+    .restaurant-card {
+        background: white;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        border-radius: 16px;
+        padding: 1.25rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: all 0.2s ease;
+    }
+
+    .restaurant-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+        border-color: rgba(212, 43, 43, 0.3);
+    }
+
+    .restaurant-info h3 {
+        margin: 0 0 0.25rem 0;
+        font-size: 1.1rem;
+        color: #1a1a1a;
+    }
+
+    .restaurant-info p {
+        margin: 0;
+        font-size: 0.9rem;
+        color: #888;
+    }
+
+    .claim-btn {
+        background: var(--red);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 0.95rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .claim-btn:hover {
+        background: #b82020;
+        transform: translateY(-1px);
+    }
+
+    .empty-state {
+        padding: 3rem;
+        color: #aaa;
+        font-style: italic;
+        text-align: center;
+    }
+
+    /* ── Verification Form ───────────────────────────────────────────── */
+    .verification-form {
+        display: none;
+        text-align: left;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-label {
+        display: block;
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: #1a1a1a;
+        margin-bottom: 0.5rem;
+    }
+
+    .form-input, .form-textarea {
+        width: 100%;
+        padding: 1rem 1.25rem;
+        background: white;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: 12px;
+        font-size: 1rem;
+        font-family: inherit;
+        transition: all 0.2s ease;
+    }
+
+    .form-input:focus, .form-textarea:focus {
+        outline: none;
+        border-color: var(--red);
+        box-shadow: 0 0 0 3px rgba(212, 43, 43, 0.05);
+    }
+
+    .form-textarea {
+        resize: vertical;
+        min-height: 100px;
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+    }
+
+    .btn-secondary {
+        background: rgba(0, 0, 0, 0.05);
+        color: #666;
+        border: none;
+        padding: 1rem 2rem;
+        border-radius: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        flex: 1;
+        transition: all 0.2s ease;
+    }
+
+    .btn-secondary:hover {
+        background: rgba(0, 0, 0, 0.1);
+    }
+
+    .btn-primary {
+        background: var(--red);
+        color: white;
+        border: none;
+        padding: 1rem 2rem;
+        border-radius: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        flex: 2;
+        transition: all 0.2s ease;
+        box-shadow: 0 4px 12px rgba(212, 43, 43, 0.2);
+    }
+
+    .btn-primary:hover {
+        background: #b82020;
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(212, 43, 43, 0.3);
+    }
+
+    /* ── Toast ────────────────────────────────────────────────────────── */
+    .rest-toast {
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        background: var(--red);
+        color: #fff;
+        padding: 0.85rem 1.5rem;
+        border-radius: 14px;
+        font-weight: 600;
+        font-size: 14px;
+        box-shadow: 0 8px 24px rgba(212, 43, 43, 0.4);
+        transform: translateY(120px);
+        opacity: 0;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        z-index: 9999;
+    }
+
+    .rest-toast.show {
+        transform: translateY(0);
+        opacity: 1;
+    }
+
+    /* ── Loading Spinner ─────────────────────────────────────────────── */
+    .spinner {
+        display: none;
+        width: 24px;
+        height: 24px;
+        border: 3px solid rgba(212, 43, 43, 0.2);
+        border-top-color: var(--red);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 1rem auto;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 600px) {
+        .glass-card { padding: 1.5rem; }
+        .claim-title { font-size: 1.5rem; }
+        .restaurant-card { flex-direction: column; align-items: flex-start; gap: 1rem; }
+        .claim-btn { width: 100%; }
+        .form-actions { flex-direction: column-reverse; }
+    }
+</style>
+
+<div class="claim-page-wrapper">
+
+    {% include 'nomz/components/premium_nav.html' %}
+
+    <div class="claim-container">
+        <!-- Step 1: Search -->
+        <div id="step-search" class="glass-card">
+            <div class="claim-header">
+                <h1 class="claim-title">Claim an existing restaurant listing</h1>
+                <p class="claim-subtitle">If your restaurant already exists in Nomz data, submit a claim and our team will verify ownership before granting access.</p>
+            </div>
+
+            {% if has_restaurant %}
+            <div style="background: #E1F0FA; color: #10668F; border-radius: 8px; padding: 1rem 1.25rem; font-weight: 500; font-size: 0.95rem; text-align: left; margin-bottom: 1.5rem;">
+                You already have a restaurant assigned to your account.
+            </div>
+            {% endif %}
+
+            <div class="search-wrapper">
+                <div class="search-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                </div>
+                <input type="text" id="restaurant-search" class="search-input"
+                    placeholder="Search by name, address, or ZIP..."
+                    autocomplete="off"
+                    {% if has_restaurant %}disabled style="opacity: 0.55; cursor: not-allowed;"{% endif %}>
+            </div>
+
+            <div id="loading-spinner" class="spinner"></div>
+
+            <div id="results-list" class="results-container">
+                {% if has_restaurant %}
+                <div class="empty-state">Search is disabled — you already own a restaurant.</div>
+                {% else %}
+                <div class="empty-state">Start typing to search for restaurants...</div>
+                {% endif %}
+            </div>
+
+            <div style="margin-top: 2rem; text-align: center;">
+                <button type="button" class="btn-secondary" style="border: 1px solid var(--red); color: var(--red); background: transparent; padding: 0.75rem 2rem; border-radius: 12px; cursor: pointer; font-weight: 600;" onclick="window.location.href='/dashboard/'">Back to dashboard</button>
+            </div>
+        </div>
+
+        <!-- Step 2: Verification Details -->
+        <div id="step-verify" class="glass-card" style="display: none;">
+            <div class="claim-header">
+                <h1 class="claim-title">Claim an existing restaurant listing</h1>
+                <p class="claim-subtitle">If your restaurant already exists in Nomz data, submit a claim and our team will verify ownership before granting access.</p>
+            </div>
+
+            <div id="already-assigned-banner" style="display: none; background: #E1F0FA; color: #10668F; border-radius: 8px; padding: 1rem 1.25rem; font-weight: 500; font-size: 0.95rem; text-align: left; margin-bottom: 2rem;">
+                This restaurant is already assigned to an account.
+            </div>
+
+            <p style="text-align: left; font-weight: 500; margin-bottom: 1.5rem; font-size: 1.1rem; color: #333;">Selected: <span id="selected-restaurant-name" style="color: var(--red);"></span></p>
+
+            <form id="claim-form" class="verification-form" onsubmit="submitClaim(event)">
+                <input type="hidden" id="selected-restaurant-id">
+                
+                <div class="form-group">
+                    <label class="form-label" for="business-email">Business Email</label>
+                    <input type="email" id="business-email" class="form-input" placeholder="e.g., owner@restaurant.com">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="contact-phone">Contact Phone</label>
+                    <input type="text" id="contact-phone" class="form-input" placeholder="e.g., +1 212-555-0199">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="proof-details">Verification Details</label>
+                    <textarea id="proof-details" class="form-textarea" placeholder="Share proof like business license number, links to social media you manage, or a link to your official website."></textarea>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary" id="btn-submit-claim" style="flex: 3;">Submit ownership claim</button>
+                    <button type="button" class="btn-secondary" style="flex: 2; border: 1px solid var(--red); color: var(--red); background: transparent;" onclick="goBackToSearch()">Back</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="rest-toast" class="rest-toast"></div>
+</div>
+
+<script>
+    const searchInput = document.getElementById('restaurant-search');
+    const resultsList = document.getElementById('results-list');
+    const spinner = document.getElementById('loading-spinner');
+    const toast = document.getElementById('rest-toast');
+    const stepSearch = document.getElementById('step-search');
+    const stepVerify = document.getElementById('step-verify');
+    const claimForm = document.getElementById('claim-form');
+
+    let debounceTimer;
+
+    searchInput.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        const query = searchInput.value.trim();
+        
+        if (query.length < 2) {
+            resultsList.innerHTML = '<div class="empty-state">Start typing to search for restaurants...</div>';
+            return;
+        }
+
+        debounceTimer = setTimeout(() => {
+            performSearch(query);
+        }, 300);
+    });
+
+    async function performSearch(query) {
+        spinner.style.display = 'block';
+        try {
+            const response = await apiFetch(`/api/search/?q=${encodeURIComponent(query)}`);
+            const data = await response.json();
+            
+            if (data.results && data.results.length > 0) {
+                resultsList.innerHTML = data.results.map(rest => `
+                    <div class="restaurant-card">
+                        <div class="restaurant-info">
+                            <h3>${escapeHtml(rest.name)}</h3>
+                            <p>${escapeHtml(rest.address || 'No address listed')}</p>
+                        </div>
+                        <button class="claim-btn" onclick="selectRestaurant(${rest.id}, '${escapeHtml(rest.name)}', ${rest.has_owner ? 'true' : 'false'})">
+                            Select
+                        </button>
+                    </div>
+                `).join('');
+            } else {
+                resultsList.innerHTML = '<div class="empty-state">No restaurants found matching your search.</div>';
+            }
+        } catch (err) {
+            console.error('Search error:', err);
+            resultsList.innerHTML = '<div class="empty-state">Error searching for restaurants. Please try again.</div>';
+        } finally {
+            spinner.style.display = 'none';
+        }
+    }
+
+    function selectRestaurant(id, name, hasOwner) {
+        document.getElementById('selected-restaurant-id').value = id;
+        document.getElementById('selected-restaurant-name').textContent = name;
+        
+        const banner = document.getElementById('already-assigned-banner');
+        const submitBtn = document.getElementById('btn-submit-claim');
+        
+        if (hasOwner) {
+            banner.style.display = 'block';
+            submitBtn.disabled = true;
+            submitBtn.style.background = '#ccc';
+            submitBtn.style.cursor = 'not-allowed';
+            submitBtn.style.boxShadow = 'none';
+        } else {
+            banner.style.display = 'none';
+            submitBtn.disabled = false;
+            submitBtn.style.background = '';
+            submitBtn.style.cursor = 'pointer';
+            submitBtn.style.boxShadow = '';
+        }
+        
+        stepSearch.style.opacity = '0';
+        setTimeout(() => {
+            stepSearch.style.display = 'none';
+            stepVerify.style.display = 'block';
+            claimForm.style.display = 'block';
+            setTimeout(() => {
+                stepVerify.style.opacity = '1';
+            }, 10);
+        }, 400);
+    }
+
+    function goBackToSearch() {
+        stepVerify.style.opacity = '0';
+        setTimeout(() => {
+            stepVerify.style.display = 'none';
+            stepSearch.style.display = 'block';
+            setTimeout(() => {
+                stepSearch.style.opacity = '1';
+            }, 10);
+        }, 400);
+    }
+
+    async function submitClaim(event) {
+        event.preventDefault();
+        const btn = document.getElementById('btn-submit-claim');
+        btn.disabled = true;
+        btn.textContent = 'Submitting...';
+
+        const id = document.getElementById('selected-restaurant-id').value;
+        const email = document.getElementById('business-email').value;
+        const phone = document.getElementById('contact-phone').value;
+        const proof = document.getElementById('proof-details').value;
+
+        try {
+            const response = await apiFetch('/api/restaurant-claim/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
+                },
+                body: JSON.stringify({ 
+                    restaurant_id: id,
+                    business_email: email,
+                    contact_phone: phone,
+                    proof_details: proof
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                showToast(`Claim request submitted! We'll review it shortly.`);
+                setTimeout(() => {
+                    window.location.href = '/dashboard/';
+                }, 2000);
+            } else {
+                showToast(result.error || 'Failed to submit claim request.');
+                btn.disabled = false;
+                btn.textContent = 'Submit Claim';
+            }
+        } catch (err) {
+            console.error('Claim error:', err);
+            showToast('Network error while submitting claim.');
+            btn.disabled = false;
+            btn.textContent = 'Submit Claim';
+        }
+    }
+
+    function showToast(msg) {
+        toast.textContent = msg;
+        toast.classList.add('show');
+        setTimeout(() => {
+            toast.classList.remove('show');
+        }, 4000);
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function handleLogout() {
+        if (confirm('Are you sure you want to log out?')) {
+            apiFetch('/api/auth/logout/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() }
+            }).then(() => { window.location.href = '/home/'; });
+        }
+    }
+</script>
+{% endblock %}

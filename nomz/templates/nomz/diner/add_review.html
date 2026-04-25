@@ -1,0 +1,179 @@
+{% extends 'nomz/base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+    /* ── DEFINITIVE FULL-WIDTH OVERRIDES ── */
+    body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: linear-gradient(135deg, var(--paper) 0%, rgba(200,169,110,0.12) 50%, var(--paper) 100%) !important;
+        font-family: var(--font-sans);
+        min-height: 100vh;
+        overflow-x: hidden;
+    }
+
+    .layout-wrapper {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        width: 100vw; height: 100vh;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        background: transparent;
+        z-index: 9999;
+    }
+
+    /* Floating Gradient Orbs (Same as dashboard) */
+    .dashboard-orbs div {
+        position: absolute;
+        border-radius: 50%;
+        pointer-events: none;
+    }
+    .orb-1 { top: 10%; left: 5%; width: 400px; height: 400px; background: radial-gradient(circle, rgba(212, 43, 43, 0.15) 0%, transparent 70%); animation: float 15s ease-in-out infinite; }
+    .orb-2 { bottom: 15%; right: 8%; width: 500px; height: 500px; background: radial-gradient(circle, rgba(212, 43, 43, 0.1) 0%, transparent 70%); animation: float 20s ease-in-out infinite reverse; }
+    .orb-3 { top: 50%; left: 50%; width: 350px; height: 350px; background: radial-gradient(circle, rgba(212, 43, 43, 0.08) 0%, transparent 70%); animation: float 25s ease-in-out infinite; transform: translate(-50%, -50%); }
+
+    @keyframes float {
+        0%, 100% { transform: translate(0, 0) rotate(0deg); }
+        33% { transform: translate(30px, -30px) rotate(5deg); }
+        66% { transform: translate(-20px, 20px) rotate(-5deg); }
+    }
+
+    /* ── MAIN CARD ── */
+    .main-body { display: flex; flex-direction: column; align-items: center; padding: 4rem 1rem; position: relative; z-index: 5; flex: 1; }
+    .review-card {
+        width: 100%; max-width: 800px; background: rgba(255, 255, 255, 0.75); 
+        backdrop-filter: blur(24px); border: 1px solid rgba(212, 43, 43, 0.2); 
+        border-radius: 28px; overflow: hidden; box-shadow: 0 24px 60px rgba(0,0,0,0.08); 
+    }
+    .card-header { background: var(--red); padding: 30px 40px; color: white; }
+    .card-header h2 { margin: 0; font-size: 1.5rem; font-weight: 700; }
+    .card-body { padding: 40px; }
+
+    /* Star Grid */
+    .rating-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .category-label { font-size: 1.05rem; font-weight: 600; color: #333; }
+    .stars-container { display: flex; gap: 6px; }
+    .star-icon { width: 28px; height: 28px; fill: #E5E7EB; cursor: pointer; transition: all 0.2s; }
+    .star-icon.filled { fill: #FACC15; }
+
+    /* Textarea & Buttons */
+    .review-textarea {
+        width: 100%; min-height: 160px; padding: 20px; border-radius: 16px;
+        border: 2px solid rgba(212, 43, 43, 0.15); background: rgba(255, 255, 255, 0.9); 
+        font-family: inherit; font-size: 1rem; resize: none; box-sizing: border-box;
+    }
+    .action-buttons { margin-top: 32px; display: flex; flex-direction: column; gap: 14px; }
+    .btn {
+        width: 100%; padding: 18px; border-radius: 16px; font-weight: 700; font-size: 1.1rem;
+        cursor: pointer; text-align: center; border: none; font-family: inherit;
+    }
+    .btn-post { 
+        background: linear-gradient(135deg, var(--red) 0%, rgba(212,43,43,0.85) 100%) !important; 
+        color: white !important; 
+        box-shadow: 0 4px 15px rgba(212, 43, 43, 0.3) !important;
+    }
+    .btn-cancel { background: rgba(255, 255, 255, 0.5); color: var(--red); border: 1px solid rgba(212, 43, 43, 0.2); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="layout-wrapper">
+    <div class="dashboard-orbs">
+        <div class="orb-1"></div>
+        <div class="orb-2"></div>
+        <div class="orb-3"></div>
+    </div>
+
+    {% include 'nomz/components/premium_nav.html' %}
+
+    <div class="main-body">
+        <div class="review-card">
+            <div class="card-header"><h2 id="restaurant-name-header">Share your experience</h2></div>
+            <div class="card-body">
+                <form id="review-form">
+                    {% csrf_token %}
+                    <div class="rating-row"><span class="category-label">Overall rating</span><div class="stars-container" id="stars-rating"></div><input type="hidden" id="rating-val" value="0"></div>
+                    <div class="rating-row"><span class="category-label">Food quality</span><div class="stars-container" id="stars-food"></div><input type="hidden" id="food-val" value="0"></div>
+                    <div class="rating-row"><span class="category-label">Service quality</span><div class="stars-container" id="stars-service"></div><input type="hidden" id="service-val" value="0"></div>
+                    <div class="rating-row"><span class="category-label">Ambience</span><div class="stars-container" id="stars-ambience"></div><input type="hidden" id="ambience-val" value="0"></div>
+                    <div class="rating-row"><span class="category-label">Location & accessibility</span><div class="stars-container" id="stars-location"></div><input type="hidden" id="location-val" value="0"></div>
+                    <div class="rating-row"><span class="category-label">Price-to-value</span><div class="stars-container" id="stars-value"></div><input type="hidden" id="value-val" value="0"></div>
+                    <div class="rating-row"><span class="category-label">Dietary accommodation</span><div class="stars-container" id="stars-dietary"></div><input type="hidden" id="dietary-val" value="0"></div>
+                    <div class="rating-row"><span class="category-label">Cleanliness</span><div class="stars-container" id="stars-cleanliness"></div><input type="hidden" id="cleanliness-val" value="0"></div>
+                    <div style="margin-top: 20px;"><textarea id="comment" class="review-textarea" placeholder="Write your review here.."></textarea></div>
+                    <div class="action-buttons">
+                        <button type="submit" id="submit-btn" class="btn btn-post">Post Review</button>
+                        <button type="button" onclick="history.back()" class="btn btn-cancel">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <footer style="border-top:2px solid var(--ink);padding:20px 6vw;display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-family:var(--font-serif);font-style:italic;font-size:13px;color:var(--tan);">Good food, always.</span>
+        <span style="font-size:10px;letter-spacing:0.3em;text-transform:uppercase;color:var(--mid);">nomz</span>
+    </footer>
+</div>
+
+{% block extra_js %}
+<script>
+    const STAR_SVG_PATH = "M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z";
+    function initStars(cId, hId) {
+        const c = document.getElementById(cId), h = document.getElementById(hId);
+        for (let i = 1; i <= 5; i++) {
+            const s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            s.setAttribute("viewBox", "0 0 24 24"); s.classList.add('star-icon');
+            const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            p.setAttribute("d", STAR_SVG_PATH); s.appendChild(p);
+            s.addEventListener('mouseenter', () => highlightStars(c, i));
+            s.addEventListener('mouseleave', () => highlightStars(c, h.value));
+            s.addEventListener('click', () => { h.value = i; highlightStars(c, i); });
+            c.appendChild(s);
+        }
+    }
+    function highlightStars(c, count) {
+        c.querySelectorAll('.star-icon').forEach((s, idx) => {
+            if (idx < count) s.classList.add('filled'); else s.classList.remove('filled');
+        });
+    }
+    async function fetchName() {
+        try {
+            const r = await apiFetch('/api/restaurants/{{restaurant_id}}/');
+            const d = await r.json();
+            if (d.name) document.getElementById('restaurant-name-header').textContent = `Share your experience at ${d.name}`;
+        } catch (e) {}
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+        ['rating', 'food', 'service', 'ambience', 'location', 'value', 'dietary', 'cleanliness'].forEach(k => initStars(`stars-${k}`, `${k}-val`));
+        fetchName();
+    });
+    document.getElementById('review-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const rating = parseInt(document.getElementById('rating-val').value);
+        if (!rating) { alert("Please provide an overall rating."); return; }
+        const btn = document.getElementById('submit-btn'); btn.disabled = true; btn.textContent = "Posting...";
+        try {
+            const res = await apiFetch('/api/restaurants/{{restaurant_id}}/review/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value },
+                body: JSON.stringify({
+                    rating,
+                    food_quality_rating: parseInt(document.getElementById('food-val').value) || 5,
+                    service_quality_rating: parseInt(document.getElementById('service-val').value) || 5,
+                    ambience_rating: parseInt(document.getElementById('ambience-val').value) || 5,
+                    location_rating: parseInt(document.getElementById('location-val').value) || 5,
+                    value_rating: parseInt(document.getElementById('value-val').value) || 5,
+                    dietary_accommodation_rating: parseInt(document.getElementById('dietary-val').value) || 5,
+                    cleanliness_rating: parseInt(document.getElementById('cleanliness-val').value) || 5,
+                    comment: document.getElementById('comment').value
+                })
+            });
+            if (res.ok) window.location.href = '/restaurant/{{restaurant_id}}/';
+            else { alert("Error posting review."); btn.disabled = false; btn.textContent = "Post Review"; }
+        } catch (err) { btn.disabled = false; btn.textContent = "Post Review"; }
+    });
+</script>
+{% endblock %}
+{% endblock %}

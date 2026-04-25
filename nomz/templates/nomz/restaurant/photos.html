@@ -1,0 +1,24 @@
+{% extends 'nomz/base.html' %}
+{% block main_layout %}
+{% include 'nomz/components/premium_design.html' %}
+<style>
+    nav.navbar, body > footer { display: none !important; }
+    .redirect-container {
+        display: flex; align-items: center; justify-content: center; min-height: 100vh;
+        position: relative; z-index: 10;
+    }
+</style>
+
+<div class="redirect-container">
+    <div style="text-align: center;">
+        <div style="font-size: 48px; margin-bottom: 20px;">📸</div>
+        <h2 style="color: #333; margin-bottom: 10px; font-family: var(--font-sans);">Redirecting to Dashboard...</h2>
+        <p style="color: #666; font-family: var(--font-sans);">Moving you to the new photo management interface.</p>
+    </div>
+</div>
+
+<script>
+    // Redirect to the profile page with a parameter to trigger the photos modal
+    window.location.href = '/restaurant-profile/?photos=1';
+</script>
+{% endblock %}
